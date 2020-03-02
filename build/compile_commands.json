@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/timtro/workspace/vme-ctrl-algebra/build/lib",
-  "command": "/usr/bin/clang++-8     -fno-omit-frame-pointer -pg -g -Wall -Wextra -Werror -pedantic -O2   -std=gnu++17 -o CMakeFiles/Nav2remote.dir/Nav2remote.cpp.o -c /home/timtro/workspace/vme-ctrl-algebra/lib/Nav2remote.cpp",
-  "file": "/home/timtro/workspace/vme-ctrl-algebra/lib/Nav2remote.cpp"
-}
-]

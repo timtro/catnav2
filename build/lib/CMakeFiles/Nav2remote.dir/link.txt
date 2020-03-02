@@ -1,2 +1,0 @@
-/usr/bin/ar qc libNav2remote.a  CMakeFiles/Nav2remote.dir/Nav2remote.cpp.o
-/usr/bin/ranlib libNav2remote.a
