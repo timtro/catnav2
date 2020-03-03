@@ -1,3 +1,4 @@
+#pragma once
 /*
  * This file is modified with permission from CrossWing's
  *    telep-base/control/nav2remote.h
@@ -5,8 +6,6 @@
  * All Rights Reserved.
  */
 
-#ifndef _NAV2REMOTE_H_
-#define _NAV2REMOTE_H_
 
 #include "../include/SignalPt.hpp"
 
@@ -29,7 +28,13 @@
  * Use wait() if you want to ensure that the path completes.
  */
 
-using PState = SignalPt<std::array<double, 3>>;
+template <typename Clock = chrono::steady_clock>
+struct VMeState {
+  chrono::time_point<Clock> time;
+  double x;
+  double y;
+  double theta;
+};
 
 class Nav2Remote {
   // No copying allowed
@@ -112,14 +117,9 @@ class Nav2Remote {
   /**
    * @brief Estimate the position and orientation.
    *
-   * @param x Output parameter for the estimated x coordinate in meters.
-   * @param y Output parameter for the estimated y coordinate in meters.
-   * @param orientation Output parameter for the estimated orientation
-   * in radians.
-   *
-   * @return 0 on success, non-zero on IO error.
+   * @return returns VMeState on success, nullopt on IO error.
    */
-  std::optional<PState> estimatePosition() const;
+  std::optional<VMeState<>> estimatePosition() const;
 
   /**
    * @brief Set the current actual position and orientation.
@@ -308,5 +308,3 @@ class Nav2Remote {
    */
   double eval(const char* expr, double* variance = 0);
 };
-
-#endif

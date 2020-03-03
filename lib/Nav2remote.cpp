@@ -103,7 +103,8 @@ int Nav2Remote::setRelativeVelocity(double dir, double speed, double turnRate) {
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-std::optional<PState> Nav2Remote::estimatePosition() const {
+std::optional<VMeState<chrono::steady_clock>>
+  Nav2Remote::estimatePosition() const {
   if (write(fd, "q\n", 2) != 2) return std::nullopt;
 
   // Read the result
@@ -115,7 +116,7 @@ std::optional<PState> Nav2Remote::estimatePosition() const {
   sscanf(line, "%lf %lf %lf %d", &x, &y, &orientation, &qlen);
   orientation *= (M_PI / 180.0);
 
-  return {{now, {x, y, orientation}}};
+  return {{now, x, y, orientation}};
 }
 
 int Nav2Remote::setPosition(double x, double y, double orientation) {
