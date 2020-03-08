@@ -103,7 +103,7 @@ int Nav2Remote::setRelativeVelocity(double dir, double speed, double turnRate) {
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-std::optional<VMeState<chrono::steady_clock>>
+std::optional<VMePose<chrono::steady_clock>>
   Nav2Remote::estimatePosition() const {
   if (write(fd, "q\n", 2) != 2) return std::nullopt;
 
@@ -114,6 +114,7 @@ std::optional<VMeState<chrono::steady_clock>>
   double x, y, orientation;
   int qlen;
   sscanf(line, "%lf %lf %lf %d", &x, &y, &orientation, &qlen);
+  // Nav2 reports in degrees, but we keep rads for std::-trig functions:
   orientation *= (M_PI / 180.0);
 
   return {{now, x, y, orientation}};

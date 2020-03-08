@@ -6,8 +6,10 @@
  * All Rights Reserved.
  */
 
+#include<chrono>
+namespace chrono = std::chrono;
+using namespace std::chrono_literals;
 
-#include "../include/SignalPt.hpp"
 
 /**
  * @brief
@@ -29,11 +31,11 @@
  */
 
 template <typename Clock = chrono::steady_clock>
-struct VMeState {
+struct VMePose {
   chrono::time_point<Clock> time;
   double x;
   double y;
-  double theta;
+  double orien;
 };
 
 class Nav2Remote {
@@ -117,9 +119,9 @@ class Nav2Remote {
   /**
    * @brief Estimate the position and orientation.
    *
-   * @return returns VMeState on success, nullopt on IO error.
+   * @return returns VMePose on success, nullopt on IO error.
    */
-  std::optional<VMeState<>> estimatePosition() const;
+  std::optional<VMePose<>> estimatePosition() const;
 
   /**
    * @brief Set the current actual position and orientation.
