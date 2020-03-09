@@ -1,17 +1,31 @@
+#include <initializer_list>
 #include <vector>
 
 #include <catch2/catch.hpp>
 
 #include "../include/nmpc_algebra.hpp"
 
-TEST_CASE("Use 'iterate_while' to make a factorial function.",
+template <typename T, std::size_t N>
+constexpr auto as_vector(T (&x)[N]) {
+  return std::vector(x, x + N);
+}
+
+template <typename T, std::size_t N>
+constexpr void set_array(T (&x)[N], std::array<T, N>&& list) {
+  assert(list.size() == N);
+  for (std::size_t i = 0; i < N; ++i)
+    x[i] = list[i];
+}
+
+TEST_CASE("Use 'iterate_while' to make a toy factorial function.",
           "[dtl][iterate_while]") {
   constexpr auto minus_one_and_times = [](std::pair<int, int> p) {
-    return std::pair{p.first - 1, p.first * p.second};
+    return (p.first > 1) ? std::pair{p.first - 1, p.first * p.second}
+                         : std::pair{1, p.second};
   };
 
-  constexpr auto first_gt_1 = [](std::pair<int, int>& p) {
-    return p.first >= 1;
+  constexpr auto first_gt_1 = [](const std::pair<int, int>& p) {
+    return p.first > 1;
   };
 
   constexpr auto factorial = [minus_one_and_times, first_gt_1](int i) {
@@ -19,117 +33,132 @@ TEST_CASE("Use 'iterate_while' to make a factorial function.",
         .second;
   };
 
-  REQUIRE(factorial(0) == 0);
-  REQUIRE(factorial(1) == 1);
-  REQUIRE(factorial(2) == 2);
-  REQUIRE(factorial(3) == 6);
-  REQUIRE(factorial(4) == 24);
-  REQUIRE(factorial(5) == 120);
-  REQUIRE(factorial(6) == 720);
+  std::vector<int> ints{0, 1, 2, 3, 4, 5, 6};
+  std::vector<int> expected{1, 1, 2, 6, 24, 120, 720};
+  std::vector<int> ans;
+
+  for (auto& each : ints) ans.push_back(factorial(each));
+
+  REQUIRE(ans == expected);
 }
 
-TEST_CASE("Forcasting the pose of a Nav2 robot starting at the origin…",
-          "[dtl][compute_forecast]") {
-  /* Catch::StringMaker<double>::precision = 20; */
-
+TEST_CASE(
+    "Forcasting the pose and tracking error of a Nav2 robot starting at the "
+    "origin.",
+    "[dtl][compute_forecast]") {
   constexpr std::size_t N = 5;
 
-  NMPCState<N> cx;
-  for (auto& each : cx.dt) each = 1s;
-  cx.x[0] = 0.f;
-  cx.y[0] = 0.f;
-  cx.th[0] = 0.f;
-  cx.Dx[0] = 0.f;
-  cx.Dy[0] = 0.f;
-  cx.Dth[0] = 0.f;
-
-  REQUIRE(cx.x[0] == 0.f);
-  REQUIRE(cx.y[0] == 0.f);
-  REQUIRE(cx.th[0] == 0.f);
-  REQUIRE(cx.Dx[0] == 0.f);
-  REQUIRE(cx.Dy[0] == 0.f);
-  REQUIRE(cx.Dth[0] == 0.f);
+  NMPCState<N> c;
+  for (auto& each : c.dt) each = 1s;
+  c.x[0] = 0;
+  c.y[0] = 0;
+  c.th[0] = 0;
+  c.Dx[0] = 0;
+  c.Dy[0] = 0;
+  c.Dth[0] = 0;
 
   SECTION(
       "With no steering and velocity, the robot should remain stationary "
-      "throughout the forecast horizon.") {
-    for (auto& each : cx.v) each = 0.f;
-    for (auto& each : cx.Dth) each = 0.f;
+      "throughout the forecast horizon. With tracking reference at the origin, "
+      "there should be 0 tracking error.") {
+    for (auto& each : c.v) each = 0;
+    for (auto& each : c.Dth) each = 0;
 
-    auto result = dtl::compute_forecast(std::move(cx));
+    for (auto& each : c.xref) each = 0;
+    for (auto& each : c.yref) each = 0;
 
-    REQUIRE_THAT(std::vector(result.x, result.x + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(std::vector(result.y, result.y + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(std::vector(result.th, result.th + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(std::vector(result.Dx, result.Dx + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(std::vector(result.Dy, result.Dy + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
+    auto result = dtl::compute_forecast(std::move(c));
+
+    REQUIRE_THAT(as_vector(result.x), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.y), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.th), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.Dx), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.Dy), Catch::Equals<double>({0, 0, 0, 0, 0}));
+
+    REQUIRE_THAT(as_vector(result.ex), Catch::Equals<double>({0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.ey), Catch::Equals<double>({0, 0, 0, 0}));
   }
 
   SECTION(
-      "With no steering and constant speed, pointed in the x-direction, the "
-      "robot should predictably follow along the axis.") {
-    for (auto& each : cx.v) each = 1.f;
-    for (auto& each : cx.Dth) each = 0.f;
-    for (auto& each : cx.th) each = 0.f;
-    cx.Dx[0] = 1.f;
-    cx.Dy[0] = 0.f;
+      "With no steering and constant speed, pointed in the 𝑥-direction, the "
+      "robot should follow along the 𝑥-axis.") {
+    for (auto& each : c.v) each = 1.f;
+    for (auto& each : c.Dth) each = 0.f;
+    for (auto& each : c.th) each = 0.f;
+    c.Dx[0] = 1.f;
+    c.Dy[0] = 0.f;
 
-    auto result = dtl::compute_forecast(std::move(cx));
+    set_array(c.xref, {1, 2, 3, 4});
+    set_array(c.yref, {0, 0, 0, 0});
 
-    REQUIRE_THAT(std::vector(result.x, result.x + N),
-                 Catch::Equals<double>({0, 1, 2, 3, 4}));
-    REQUIRE_THAT(std::vector(result.y, result.y + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(std::vector(result.th, result.th + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(std::vector(result.Dx, result.Dx + N),
-                 Catch::Equals<double>({1, 1, 1, 1, 1}));
-    REQUIRE_THAT(std::vector(result.Dy, result.Dy + N),
-                 Catch::Equals<double>({0, 0, 0, 0, 0}));
+    auto result = dtl::compute_forecast(std::move(c));
+
+    REQUIRE_THAT(as_vector(result.x), Catch::Equals<double>({0, 1, 2, 3, 4}));
+    REQUIRE_THAT(as_vector(result.y), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.th), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.Dx), Catch::Equals<double>({1, 1, 1, 1, 1}));
+    REQUIRE_THAT(as_vector(result.Dy), Catch::Equals<double>({0, 0, 0, 0, 0}));
+
+    REQUIRE_THAT(as_vector(result.ex), Catch::Equals<double>({0, 0, 0, 0}));
+    REQUIRE_THAT(as_vector(result.ey), Catch::Equals<double>({0, 0, 0, 0}));
   }
 
   SECTION(
       "Drive in a square by controlling Dth. With v = 1, dt=1 and Dth = π/2, "
-      "this should drive the unit-box.") {
-    for (auto& each : cx.v) each = 1.f;
-    for (auto& each : cx.Dth) each = M_PI / 2;
-    for (auto& each : cx.th) each = 0.f;
-    cx.Dx[0] = 1.f;
-    cx.Dy[0] = 0.f;
+      "this should drive the unit-box with no tracking error.") {
+    for (auto& each : c.v) each = 1.f;
+    for (auto& each : c.Dth) each = M_PI_2l;
+    for (auto& each : c.th) each = 0.f;
+    c.Dx[0] = 1.f;
+    c.Dy[0] = 0.f;
 
-    auto result = dtl::compute_forecast(std::move(cx));
+    set_array(c.xref, {1, 1, 0, 0});
+    set_array(c.yref, {0, 1, 1, 0});
 
-    REQUIRE_THAT(std::vector(result.x, result.x + N),
+    NMPCState<N> result = dtl::compute_forecast(std::move(c));
+
+    REQUIRE_THAT(as_vector(result.x),
                  Catch::Approx<double>({0, 1, 1, 0, 0}).margin(1e-15));
-    REQUIRE_THAT(std::vector(result.y, result.y + N),
+    REQUIRE_THAT(as_vector(result.y),
                  Catch::Approx<double>({0, 0, 1, 1, 0}).margin(1e-15));
-    REQUIRE_THAT(
-        std::vector(result.th, result.th + N),
-        Catch::Approx<double>({0, M_PI / 2, M_PI, 3 * M_PI / 2, 2 * M_PI})
-            .margin(1e-15));
-    REQUIRE_THAT(std::vector(result.Dx, result.Dx + N),
+    REQUIRE_THAT(as_vector(result.th),
+                 Catch::Approx<double>({0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI})
+                     .margin(1e-15));
+    REQUIRE_THAT(as_vector(result.Dx),
                  Catch::Approx<double>({1, 0, -1, 0, 1}).margin(1e-15));
-    REQUIRE_THAT(std::vector(result.Dy, result.Dy + N),
+    REQUIRE_THAT(as_vector(result.Dy),
                  Catch::Approx<double>({0, 1, 0, -1, 0}).margin(1e-15));
+
+    REQUIRE_THAT(as_vector(result.ex),
+                 Catch::Approx<double>({0, 0, 0, 0}).margin(1e-15));
+    REQUIRE_THAT(as_vector(result.ey),
+                 Catch::Approx<double>({0, 0, 0, 0}).margin(1e-15));
   }
-}
 
-TEST_CASE("", "[dtl][compute_tracking_errors]") {
-  constexpr std::size_t N = 5;
+  SECTION(
+      "If we drive along 𝑦 = 𝑥 in the direction of increasing 𝑥 and 𝑦, but "
+      "tracking reference expects the opposite, we should get tracking "
+      "error vectors double of the position vectors") {
+    for (auto& each : c.v) each = 1.f;
+    for (auto& each : c.Dth) each = 0;
+    for (auto& each : c.th) each = M_PI_4;
+    c.Dx[0] = M_SQRT1_2;
+    c.Dy[0] = M_SQRT1_2;
 
-  NMPCState<N> cx;
-  for (auto& each : cx.xref) each = 0;
-  for (auto& each : cx.yref) each = 0;
+    set_array(c.xref,
+              {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
+    set_array(c.yref,
+              {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
 
-  REQUIRE(cx.x[0] == 0.f);
-  REQUIRE(cx.y[0] == 0.f);
-  REQUIRE(cx.th[0] == 0.f);
-  REQUIRE(cx.Dx[0] == 0.f);
-  REQUIRE(cx.Dy[0] == 0.f);
-  REQUIRE(cx.Dth[0] == 0.f);
+    auto result = dtl::compute_forecast(std::move(c));
+
+    REQUIRE_THAT(as_vector(result.ex),
+                 Catch::Approx<double>({2 * M_SQRT1_2, 4 * M_SQRT1_2,
+                                        6 * M_SQRT1_2, 8 * M_SQRT1_2})
+                     .margin(1e-15));
+    REQUIRE_THAT(as_vector(result.ey),
+                 Catch::Approx<double>({2 * M_SQRT1_2, 4 * M_SQRT1_2,
+                                        6 * M_SQRT1_2, 8 * M_SQRT1_2})
+                     .margin(1e-15));
+  }
 }

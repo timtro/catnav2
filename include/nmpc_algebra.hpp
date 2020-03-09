@@ -62,7 +62,7 @@ struct NMPCState {
 namespace dtl {
 
   template <typename F, typename P, typename I>
-  auto iterate_while(F f, P p, I&& i) {
+  constexpr auto iterate_while(F f, P p, I&& i) noexcept {
     auto result = std::move(i);
     do {
       result = std::invoke(f, result);
@@ -72,36 +72,28 @@ namespace dtl {
   }
 
   template <std::size_t N, typename Clock>
-  auto gradNorm_within(NMPCState<N, Clock>& x, double epsilon) {
+  auto gradNorm_within(NMPCState<N, Clock>& x, double epsilon) noexcept {
     return (x.gradNorm <= epsilon) ? true : false;
   }
 
   template <std::size_t N, typename Clock = chrono::steady_clock>
-  NMPCState<N, Clock> compute_forecast(NMPCState<N, Clock>&& s) noexcept {
+  constexpr NMPCState<N, Clock>&& compute_forecast(
+      NMPCState<N, Clock>&& s) noexcept {
     for (unsigned k = 1; k < N; ++k) {
       s.th[k] = fma(s.Dth[k - 1], s.dt[k - 1].count(), s.th[k - 1]);
       s.x[k] = fma(s.Dx[k - 1], s.dt[k - 1].count(), s.x[k - 1]);
       s.Dx[k] = s.v[k - 1] * std::cos(s.th[k]);
       s.y[k] = fma(s.Dy[k - 1], s.dt[k - 1].count(), s.y[k - 1]);
       s.Dy[k] = s.v[k - 1] * std::sin(s.th[k]);
+      s.ex[k-1] = s.x[k] - s.xref[k-1];
+      s.ey[k-1] = s.y[k] - s.yref[k-1];
     }
 
     return std::move(s);
   }
 
   template <std::size_t N, typename Clock = chrono::steady_clock>
-  NMPCState<N, Clock>&& compute_tracking_errors(
-      NMPCState<N, Clock>&& s) noexcept {
-    /* for (unsigned k = 0; k < N - 1; ++k) { */
-    /*   s.ex[k] = s.x[k + 1] - s.xref[k]; */
-    /*   s.ey[k] = s.y[k + 1] - s.yref[k]; */
-    /* } */
-
-    return std::move(s);
-  }
-
-  template <std::size_t N, typename Clock = chrono::steady_clock>
-  NMPCState<N, Clock>&& compute_path_potential_gradient(
+  constexpr NMPCState<N, Clock>&& compute_path_potential_gradient(
       NMPCState<N, Clock> s) noexcept {
     /* for (unsigned k = 0; k < N - 2; ++k) { */
     /*   fp_point2d gradVec = */
@@ -117,7 +109,8 @@ namespace dtl {
    * multipliers are computed.
    */
   template <std::size_t N, typename Clock = chrono::steady_clock>
-  NMPCState<N, Clock>&& compute_gradient(NMPCState<N, Clock>&& s) noexcept {
+  constexpr NMPCState<N, Clock>&& compute_gradient(
+      NMPCState<N, Clock>&& s) noexcept {
     /* s.gradNorm = 0.; */
     /* s.px[N - 2] = s.Q0 * s.ex[N - 2]; */
     /* s.py[N - 2] = s.Q0 * s.ey[N - 2]; */
@@ -148,7 +141,7 @@ namespace dtl {
 using namespace dtl;
 
 template <std::size_t N, typename Clock = chrono::steady_clock>
-auto nmpc_algebra() {
+constexpr auto nmpc_algebra() {
   return [](NMPCState<horizonSteps, Clock>&& ctrlState,
             VMePose<Clock> errSigl) -> NMPCState<N, Clock> {
     const chrono::duration<double> deltaT = errSigl.time - ctrlState.time;
@@ -175,7 +168,6 @@ auto nmpc_algebra() {
   /*         compose */
   /*           ( compute_gradient */
   /*           , compute_path_potential_gradient */
-  /*           , compute_tracking_errors */
   /*           , compute_forecast */
   /*           ), */
   /*         gradNorm_within(0.1))); */
