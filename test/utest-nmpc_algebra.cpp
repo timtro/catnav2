@@ -4,7 +4,32 @@
 
 #include "../include/nmpc_algebra.hpp"
 
-TEST_CASE("Forcasting the pose of a Nav2 robot starting at the origin…") {
+TEST_CASE("Use 'iterate_while' to make a factorial function.",
+          "[dtl][iterate_while]") {
+  constexpr auto minus_one_and_times = [](std::pair<int, int> p) {
+    return std::pair{p.first - 1, p.first * p.second};
+  };
+
+  constexpr auto first_gt_1 = [](std::pair<int, int>& p) {
+    return p.first >= 1;
+  };
+
+  constexpr auto factorial = [minus_one_and_times, first_gt_1](int i) {
+    return dtl::iterate_while(minus_one_and_times, first_gt_1, std::pair{i, 1})
+        .second;
+  };
+
+  REQUIRE(factorial(0) == 0);
+  REQUIRE(factorial(1) == 1);
+  REQUIRE(factorial(2) == 2);
+  REQUIRE(factorial(3) == 6);
+  REQUIRE(factorial(4) == 24);
+  REQUIRE(factorial(5) == 120);
+  REQUIRE(factorial(6) == 720);
+}
+
+TEST_CASE("Forcasting the pose of a Nav2 robot starting at the origin…",
+          "[dtl][compute_forecast]") {
   /* Catch::StringMaker<double>::precision = 20; */
 
   constexpr std::size_t N = 5;
@@ -92,4 +117,19 @@ TEST_CASE("Forcasting the pose of a Nav2 robot starting at the origin…") {
     REQUIRE_THAT(std::vector(result.Dy, result.Dy + N),
                  Catch::Approx<double>({0, 1, 0, -1, 0}).margin(1e-15));
   }
+}
+
+TEST_CASE("", "[dtl][compute_tracking_errors]") {
+  constexpr std::size_t N = 5;
+
+  NMPCState<N> cx;
+  for (auto& each : cx.xref) each = 0;
+  for (auto& each : cx.yref) each = 0;
+
+  REQUIRE(cx.x[0] == 0.f);
+  REQUIRE(cx.y[0] == 0.f);
+  REQUIRE(cx.th[0] == 0.f);
+  REQUIRE(cx.Dx[0] == 0.f);
+  REQUIRE(cx.Dy[0] == 0.f);
+  REQUIRE(cx.Dth[0] == 0.f);
 }

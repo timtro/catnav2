@@ -62,13 +62,13 @@ struct NMPCState {
 namespace dtl {
 
   template <typename F, typename P, typename I>
-  auto iterate_until(F f, P p, I&& i) {
+  auto iterate_while(F f, P p, I&& i) {
     auto result = std::move(i);
     do {
       result = std::invoke(f, result);
-    } while (p(&result));
+    } while (std::invoke(p, result));
 
-    return result;
+    return std::move(result);
   }
 
   template <std::size_t N, typename Clock>
