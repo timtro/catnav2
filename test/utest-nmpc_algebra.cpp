@@ -13,8 +13,7 @@ constexpr auto as_vector(T (&x)[N]) {
 template <typename T, std::size_t N>
 constexpr void set_array(T (&x)[N], std::array<T, N>&& list) {
   assert(list.size() == N);
-  for (std::size_t i = 0; i < N; ++i)
-    x[i] = list[i];
+  for (std::size_t i = 0; i < N; ++i) x[i] = list[i];
 }
 
 TEST_CASE("Use 'iterate_while' to make a toy factorial function.",
@@ -69,14 +68,14 @@ TEST_CASE(
 
     auto result = dtl::compute_forecast(std::move(c));
 
-    REQUIRE_THAT(as_vector(result.x), Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.y), Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.th), Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.Dx), Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.Dy), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE(as_vector(result.x) == std::vector<double>{0, 0, 0, 0, 0});
+    REQUIRE(as_vector(result.y) == std::vector<double>{0, 0, 0, 0, 0});
+    REQUIRE(as_vector(result.th) == std::vector<double>{0, 0, 0, 0, 0});
+    REQUIRE(as_vector(result.Dx) == std::vector<double>{0, 0, 0, 0, 0});
+    REQUIRE(as_vector(result.Dy) == std::vector<double>{0, 0, 0, 0, 0});
 
-    REQUIRE_THAT(as_vector(result.ex), Catch::Equals<double>({0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.ey), Catch::Equals<double>({0, 0, 0, 0}));
+    REQUIRE(as_vector(result.ex) == std::vector<double>{0, 0, 0, 0});
+    REQUIRE(as_vector(result.ey) == std::vector<double>{0, 0, 0, 0});
   }
 
   SECTION(
@@ -93,14 +92,14 @@ TEST_CASE(
 
     auto result = dtl::compute_forecast(std::move(c));
 
-    REQUIRE_THAT(as_vector(result.x), Catch::Equals<double>({0, 1, 2, 3, 4}));
-    REQUIRE_THAT(as_vector(result.y), Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.th), Catch::Equals<double>({0, 0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.Dx), Catch::Equals<double>({1, 1, 1, 1, 1}));
-    REQUIRE_THAT(as_vector(result.Dy), Catch::Equals<double>({0, 0, 0, 0, 0}));
+    REQUIRE(as_vector(result.x) == std::vector<double>{0, 1, 2, 3, 4});
+    REQUIRE(as_vector(result.y) == std::vector<double>{0, 0, 0, 0, 0});
+    REQUIRE(as_vector(result.th) == std::vector<double>{0, 0, 0, 0, 0});
+    REQUIRE(as_vector(result.Dx) == std::vector<double>{1, 1, 1, 1, 1});
+    REQUIRE(as_vector(result.Dy) == std::vector<double>{0, 0, 0, 0, 0});
 
-    REQUIRE_THAT(as_vector(result.ex), Catch::Equals<double>({0, 0, 0, 0}));
-    REQUIRE_THAT(as_vector(result.ey), Catch::Equals<double>({0, 0, 0, 0}));
+    REQUIRE(as_vector(result.ex) == std::vector<double>{0, 0, 0, 0});
+    REQUIRE(as_vector(result.ey) == std::vector<double>{0, 0, 0, 0});
   }
 
   SECTION(
@@ -117,13 +116,12 @@ TEST_CASE(
 
     NMPCState<N> result = dtl::compute_forecast(std::move(c));
 
+    REQUIRE (as_vector(result.th)
+                 == std::vector<double>{0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI});
     REQUIRE_THAT(as_vector(result.x),
                  Catch::Approx<double>({0, 1, 1, 0, 0}).margin(1e-15));
     REQUIRE_THAT(as_vector(result.y),
                  Catch::Approx<double>({0, 0, 1, 1, 0}).margin(1e-15));
-    REQUIRE_THAT(as_vector(result.th),
-                 Catch::Approx<double>({0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI})
-                     .margin(1e-15));
     REQUIRE_THAT(as_vector(result.Dx),
                  Catch::Approx<double>({1, 0, -1, 0, 1}).margin(1e-15));
     REQUIRE_THAT(as_vector(result.Dy),
@@ -155,10 +153,10 @@ TEST_CASE(
     REQUIRE_THAT(as_vector(result.ex),
                  Catch::Approx<double>({2 * M_SQRT1_2, 4 * M_SQRT1_2,
                                         6 * M_SQRT1_2, 8 * M_SQRT1_2})
-                     .margin(1e-15));
+                     .margin(1e-25));
     REQUIRE_THAT(as_vector(result.ey),
                  Catch::Approx<double>({2 * M_SQRT1_2, 4 * M_SQRT1_2,
                                         6 * M_SQRT1_2, 8 * M_SQRT1_2})
-                     .margin(1e-15));
+                     .margin(1e-25));
   }
 }
