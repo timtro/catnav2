@@ -8,3 +8,8 @@ set(testname utest-nmpc_algebra)
     add_executable (${testname} ${testname}.cpp)
     target_link_libraries (${testname} CATCH)
     create_test(${testname})
+
+set(testname utest-Obstacle)
+    add_executable (${testname} ${testname}.cpp)
+    target_link_libraries (${testname} CATCH Obstacle)
+    create_test(${testname})

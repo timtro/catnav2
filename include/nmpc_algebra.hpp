@@ -11,7 +11,7 @@
 #include <boost/hana/functional/compose.hpp>
 /* #include <boost/hana/functional/curry.hpp> */
 
-#include "../include/Obstacle.hpp"
+#include "../lib/Obstacle.hpp"
 #include "../include/util.hpp"
 #include "../lib/Nav2remote.hpp"
 
