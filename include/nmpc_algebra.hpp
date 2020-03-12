@@ -56,7 +56,7 @@ struct NMPCState {
   double R,  // Control effort penalty
       Q,     // Tracking error penalty
       Q0;    // Terminal error penalty
-  std::list<Obstacle> obstacles;
+  std::list<ob::Obstacle> obstacles;
 };
 
 namespace dtl {

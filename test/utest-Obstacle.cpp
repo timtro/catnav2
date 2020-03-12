@@ -16,17 +16,17 @@ using XY = std::pair<double, double>;
 
 const double big = std::numeric_limits<double>::max() / 2;
 
-TEST_CASE("Null obstacles produce no potential", "[NullObstacle]") {
-  std::vector<Obstacle> obs{NullObstacle{}, NullObstacle{}};
-
-  REQUIRE(g_phi(0, 0, NullObstacle()) == XY{0, 0});
-  REQUIRE(g_phi(100, 100, NullObstacle()) == XY{0, 0});
+TEST_CASE("Null obstacles produce no potential", "[ob::Null]") {
+  REQUIRE(ob::g_phi(0, 0, ob::Null()) == XY{0, 0});
+  REQUIRE(ob::g_phi(100, 100, ob::Null()) == XY{0, 0});
 }
 
 TEST_CASE("Testing point obstacles at origin with hand-computed values",
-          "[PointObstacle]") {
-  constexpr auto o1 = PointObstacle{0, 0, 2, 1};
-  constexpr auto g_o1 = [o1](double x, double y) { return g_phi(x, y, o1); };
+          "[ob::Point]") {
+  constexpr auto o1 = ob::Point{0, 0, 2, 1};
+  constexpr auto g_o1 = [o1](double x, double y) {
+    return ob::g_phi(x, y, o1);
+  };
 
   REQUIRE(g_o1(0, 0) == XY{0, 0});
   REQUIRE(g_o1(1, 0) == XY{0.5, 0});
@@ -37,10 +37,12 @@ TEST_CASE("Testing point obstacles at origin with hand-computed values",
   REQUIRE(g_o1(0, big) == XY{0, 0});
   REQUIRE(g_o1(big, 0) == XY{0, 0});
 
-  constexpr auto o2 = PointObstacle{0, 0, 1, 1};
-  constexpr auto g_o2 = [o2](double x, double y) { return g_phi(x, y, o2); };
+  constexpr auto o2 = ob::Point{0, 0, 1, 1};
+  constexpr auto g_o2 = [o2](double x, double y) {
+    return ob::g_phi(x, y, o2);
+  };
 
-  // By quirk of the math, with exponent 1, g_phi is undef at the origin.
+  // By quirk of the math, with exponent 1, ob::g_phi is undef at the origin.
   REQUIRE((std::isnan(g_o2(0, 0).first) && std::isnan(g_o2(0, 0).second)));
 
   REQUIRE(g_o2(1, 0) == XY{1. / 4, 0});
@@ -52,8 +54,10 @@ TEST_CASE("Testing point obstacles at origin with hand-computed values",
   REQUIRE(g_o2(0, big) == XY{0, 0});
   REQUIRE(g_o2(big, 0) == XY{0, 0});
 
-  constexpr auto o3 = PointObstacle{0, 0, 2, 2};
-  constexpr auto g_o3 = [o3](double x, double y) { return g_phi(x, y, o3); };
+  constexpr auto o3 = ob::Point{0, 0, 2, 2};
+  constexpr auto g_o3 = [o3](double x, double y) {
+    return ob::g_phi(x, y, o3);
+  };
 
   REQUIRE(g_o3(0, 0) == XY{0, 0});
   REQUIRE(g_o3(1, 0) == XY{2. / 9, 0});
@@ -64,9 +68,11 @@ TEST_CASE("Testing point obstacles at origin with hand-computed values",
   REQUIRE(g_o3(big, 0) == XY{0, 0});
 }
 
-TEST_CASE("Testing point obstacles off-origin", "[PointObstacle]") {
-  constexpr auto o1 = PointObstacle{1, 1, 2, 1};
-  constexpr auto g_o1 = [o1](double x, double y) { return g_phi(x, y, o1); };
+TEST_CASE("Testing point obstacles off-origin", "[ob::Point]") {
+  constexpr auto o1 = ob::Point{1, 1, 2, 1};
+  constexpr auto g_o1 = [o1](double x, double y) {
+    return ob::g_phi(x, y, o1);
+  };
 
   REQUIRE(g_o1(1, 1) == XY{0, 0});
   REQUIRE(g_o1(2, 1) == XY{0.5, 0});
@@ -78,16 +84,11 @@ TEST_CASE("Testing point obstacles off-origin", "[PointObstacle]") {
 TEST_CASE(
     "Working in aggregates, summing over path with both Null and Point "
     "obstacles together.",
-    "[NullObstacle][PointObstacle]") {
-  const std::list<Obstacle> obs{PointObstacle{0, 0, 2, 1}, NullObstacle{},
-                                PointObstacle{0, 0, 2, 1}, NullObstacle{}};
+    "[ob::Null][ob::Point]") {
+  const std::list<ob::Obstacle> obs{ob::Point{0, 0, 2, 1}, ob::Null{},
+                                    ob::Point{0, 0, 2, 1}, ob::Null{}};
 
-  constexpr auto fl = [](XY accum, const Obstacle& o) -> XY {
-    XY xy = g_phi(1, 0, o);
-    return {accum.first + xy.first, accum.second + xy.second};
-  };
+  const XY result = foldl(ob::g_phi_accuml(1, -1), XY{0, 0}, obs);
 
-  const XY result = foldl(fl, XY{0, 0}, obs);
-
-  REQUIRE(result == XY{1, 0});
+  REQUIRE(result == XY{4. / 9, -4. / 9});
 }
