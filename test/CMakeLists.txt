@@ -6,7 +6,7 @@ endmacro (create_test)
 
 set(testname utest-nmpc_algebra)
     add_executable (${testname} ${testname}.cpp)
-    target_link_libraries (${testname} CATCH)
+    target_link_libraries (${testname} CATCH Obstacle)
     create_test(${testname})
 
 set(testname utest-Obstacle)

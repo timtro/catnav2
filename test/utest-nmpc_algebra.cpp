@@ -115,8 +115,8 @@ TEST_CASE(
 
     NMPCState<N> result = dtl::compute_forecast(std::move(c));
 
-    REQUIRE (as_vector(result.th)
-                 == std::vector<double>{0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI});
+    REQUIRE(as_vector(result.th)
+            == std::vector<double>{0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI});
     REQUIRE_THAT(as_vector(result.x),
                  Catch::Approx<double>({0, 1, 1, 0, 0}).margin(1e-15));
     REQUIRE_THAT(as_vector(result.y),
@@ -158,4 +158,24 @@ TEST_CASE(
                                         6 * M_SQRT1_2, 8 * M_SQRT1_2})
                      .margin(1e-25));
   }
+}
+
+TEST_CASE(
+    "Reherse some of the hand-calculations in the Object unit tests, this time "
+    "checking that we fold properly over a trajectory of 𝑥𝑦-coordinates.",
+    "[dtl][compute_path_potential_gradient]") {
+  constexpr std::size_t N = 5;
+  NMPCState<N> c;
+  set_array(c.x, {0, 0, 1, 0, 1});
+  set_array(c.y, {0, 0, 0, 1, -1});
+  //              ⬑ We don't compute potential at the fixed “current” position.
+  c.obstacles.push_back(ob::Point{0, 0, 2, 1});
+  c.obstacles.push_back(ob::Null{});
+  c.obstacles.push_back(ob::Point{0, 0, 2, 1});
+  c.obstacles.push_back(ob::Null{});
+
+  const NMPCState<N> result = compute_path_potential_gradient(c);
+
+  CHECK(as_vector(result.DPhiX) == std::vector<double>{0, 1, 0, 4. / 9});
+  CHECK(as_vector(result.DPhiY) == std::vector<double>{0, 0, 1, -4. / 9});
 }

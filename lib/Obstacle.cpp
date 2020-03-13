@@ -8,9 +8,9 @@ using XY = std::pair<double, double>;
 
 namespace ob {
 
-  auto g_phi(double, double, const Null&) -> XY { return {0, 0}; }
+  auto g_phi(double, double, const Null) -> XY { return {0, 0}; }
 
-  auto g_phi(double x, double y, const Point& p) -> XY {
+  auto g_phi(double x, double y, const Point p) -> XY {
     /*
      * For a point-obstacle, the gradient vector is:
      *
@@ -33,7 +33,7 @@ namespace ob {
     return {rx * numer / denom, ry * numer / denom};
   }
 
-  auto g_phi(const double x, const double y, const Obstacle& o) -> XY {
+  auto g_phi(const double x, const double y, const Obstacle o) -> XY {
     return std::visit([x, y](auto& o) { return g_phi(x, y, o); }, o);
   }
 
