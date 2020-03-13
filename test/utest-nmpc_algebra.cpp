@@ -163,19 +163,44 @@ TEST_CASE(
 TEST_CASE(
     "Reherse some of the hand-calculations in the Object unit tests, this time "
     "checking that we fold properly over a trajectory of 𝑥𝑦-coordinates.",
-    "[dtl][compute_path_potential_gradient]") {
-  constexpr std::size_t N = 5;
-  NMPCState<N> c;
-  set_array(c.x, {0, 0, 1, 0, 1});
-  set_array(c.y, {0, 0, 0, 1, -1});
-  //              ⬑ We don't compute potential at the fixed “current” position.
+    "[dtl][compute_forecast][potential_gradient]") {
+  NMPCState<5> c;
+  c.x[0] = 0;
+  c.y[0] = 0;
+  c.th[0] = M_PI_4;
+  for (auto& each : c.dt) each = 1s;
+  set_array(c.v, {M_SQRT2, 1, 1, 1});
+  set_array(c.Dth, {0, -3 * M_PI_4, 0, 0});
+  //                ↑
+  //                We don't compute potential at the fixed “current” position.
+  //
+  // This combination of v and Dth should walk to corners of a triangle:
+  //    (0,0) → (0,0) → (1,1) → (1,0) → (1,-1)
+  //
+  //            │  • (1,1)
+  //            │ ↗↓
+  //      (0,0)—•——•—(1,0)
+  //            │  ↓
+  //            │  • (1,-1)
+  //
+  // We'll check this later.
+
   c.obstacles.push_back(ob::Point{0, 0, 2, 1});
   c.obstacles.push_back(ob::Null{});
   c.obstacles.push_back(ob::Point{0, 0, 2, 1});
   c.obstacles.push_back(ob::Null{});
 
-  const NMPCState<N> result = compute_path_potential_gradient(c);
+  const NMPCState<5> result = compute_forecast(c);
 
-  CHECK(as_vector(result.DPhiX) == std::vector<double>{0, 1, 0, 4. / 9});
-  CHECK(as_vector(result.DPhiY) == std::vector<double>{0, 0, 1, -4. / 9});
+  CHECK_THAT(as_vector(result.x),
+             Catch::Approx<double>({0, 0, 1, 1, 1}).margin(1e-25));
+  CHECK_THAT(as_vector(result.y),
+             Catch::Approx<double>({0, 0, 1, 0, -1}).margin(1e-25));
+  CHECK_THAT(as_vector(result.th),
+             Catch::Approx<double>({M_PI_4, M_PI_4, -M_PI_2, -M_PI_2, -M_PI_2})
+                 .margin(1e-25));
+  REQUIRE_THAT(as_vector(result.DPhiX),
+               Catch::Approx<double>({0, 4. / 9, 1, 4. / 9}).margin(1e-25));
+  REQUIRE_THAT(as_vector(result.DPhiY),
+               Catch::Approx<double>({0, 4. / 9, 0, -4. / 9}).margin(1e-25));
 }

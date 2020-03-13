@@ -77,20 +77,14 @@ namespace dtl {
       s.Dx[k] = s.v[k - 1] * std::cos(s.th[k]);
       s.y[k] = fma(s.Dy[k - 1], s.dt[k - 1].count(), s.y[k - 1]);
       s.Dy[k] = s.v[k - 1] * std::sin(s.th[k]);
+
       s.ex[k - 1] = s.x[k] - s.xref[k - 1];
       s.ey[k - 1] = s.y[k] - s.yref[k - 1];
+
+      std::tie(s.DPhiX[k - 1], s.DPhiY[k - 1]) = foldl(
+          ob::g_phi_accuml(s.x[k], s.y[k]), std::pair{0., 0.}, s.obstacles);
     }
 
-    return s;
-  }
-
-  template <std::size_t N, typename Clock = chrono::steady_clock>
-  constexpr NMPCState<N, Clock> compute_path_potential_gradient(
-      NMPCState<N, Clock> s) {
-    for (unsigned k = 0; k < N - 1; ++k)
-      std::tie(s.DPhiX[k], s.DPhiY[k]) =
-          foldl(ob::g_phi_accuml(s.x[k + 1], s.y[k + 1]), std::pair{0., 0.},
-                s.obstacles);
     return s;
   }
 
