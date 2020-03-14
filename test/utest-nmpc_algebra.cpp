@@ -31,11 +31,10 @@ TEST_CASE("Use 'iterate_while' to make a toy factorial function.",
         .second;
   };
 
-  std::vector<int> ints{0, 1, 2, 3, 4, 5, 6};
-  std::vector<int> expected{1, 1, 2, 6, 24, 120, 720};
-  std::vector<int> ans;
+  const std::vector<int> ints{0, 1, 2, 3, 4, 5, 6};
+  const std::vector<int> expected{1, 1, 2, 6, 24, 120, 720};
 
-  for (auto& each : ints) ans.push_back(factorial(each));
+  std::vector<int> ans = fmap(factorial, ints);
 
   REQUIRE(ans == expected);
 }
@@ -44,26 +43,30 @@ TEST_CASE(
     "Forcasting the pose and tracking error of a Nav2 robot starting at the "
     "origin.",
     "[dtl][forecast]") {
-  constexpr std::size_t N = 5;
-
-  NMPCState<N> c;
-  for (auto& each : c.dt) each = 1s;
-  c.x[0] = 0;
-  c.y[0] = 0;
-  c.th[0] = 0;
-  c.Dx[0] = 0;
-  c.Dy[0] = 0;
-  c.Dth[0] = 0;
+  const NMPCState<5> base = [] {
+    NMPCState<5> base;
+    for (auto& each : base.dt) each = 1s;
+    base.x[0] = 0;
+    base.y[0] = 0;
+    base.th[0] = 0;
+    base.Dx[0] = 0;
+    base.Dy[0] = 0;
+    base.Dth[0] = 0;
+    return base;
+  }();
 
   SECTION(
       "With no steering and velocity, the robot should remain stationary "
       "throughout the forecast horizon. With tracking reference at the origin, "
       "there should be 0 tracking error.") {
-    for (auto& each : c.v) each = 0;
-    for (auto& each : c.Dth) each = 0;
-
-    for (auto& each : c.xref) each = 0;
-    for (auto& each : c.yref) each = 0;
+    const auto c = [base] {
+      auto c = base;
+      for (auto& each : c.v) each = 0;
+      for (auto& each : c.Dth) each = 0;
+      for (auto& each : c.xref) each = 0;
+      for (auto& each : c.yref) each = 0;
+      return c;
+    }();
 
     auto result = dtl::forecast(std::move(c));
 
@@ -80,16 +83,19 @@ TEST_CASE(
   SECTION(
       "With no steering and constant speed, pointed in the 𝑥-direction, the "
       "robot should follow along the 𝑥-axis.") {
-    for (auto& each : c.v) each = 1.f;
-    for (auto& each : c.Dth) each = 0.f;
-    for (auto& each : c.th) each = 0.f;
-    c.Dx[0] = 1.f;
-    c.Dy[0] = 0.f;
+    const auto c = [base] {
+      auto c = base;
+      c.Dx[0] = 1.f;
+      c.Dy[0] = 0.f;
+      for (auto& each : c.v) each = 1.f;
+      for (auto& each : c.Dth) each = 0.f;
+      for (auto& each : c.th) each = 0.f;
+      set_array(c.xref, {1, 2, 3, 4});
+      set_array(c.yref, {0, 0, 0, 0});
+      return c;
+    }();
 
-    set_array(c.xref, {1, 2, 3, 4});
-    set_array(c.yref, {0, 0, 0, 0});
-
-    auto result = dtl::forecast(std::move(c));
+    const auto result = dtl::forecast(std::move(c));
 
     REQUIRE(as_vector(result.x) == std::vector<double>{0, 1, 2, 3, 4});
     REQUIRE(as_vector(result.y) == std::vector<double>{0, 0, 0, 0, 0});
@@ -104,16 +110,19 @@ TEST_CASE(
   SECTION(
       "Drive in a square by controlling Dth. With v = 1, dt=1 and Dth = π/2, "
       "this should drive the unit-box with no tracking error.") {
-    for (auto& each : c.v) each = 1.f;
-    for (auto& each : c.Dth) each = M_PI_2l;
-    for (auto& each : c.th) each = 0.f;
-    c.Dx[0] = 1.f;
-    c.Dy[0] = 0.f;
+    const auto c = [base] {
+      auto c = base;
+      c.Dx[0] = 1.f;
+      c.Dy[0] = 0.f;
+      for (auto& each : c.v) each = 1.f;
+      for (auto& each : c.Dth) each = M_PI_2l;
+      for (auto& each : c.th) each = 0.f;
+      set_array(c.xref, {1, 1, 0, 0});
+      set_array(c.yref, {0, 1, 1, 0});
+      return c;
+    }();
 
-    set_array(c.xref, {1, 1, 0, 0});
-    set_array(c.yref, {0, 1, 1, 0});
-
-    NMPCState<N> result = dtl::forecast(std::move(c));
+    const auto result = dtl::forecast(std::move(c));
 
     REQUIRE(as_vector(result.th)
             == std::vector<double>{0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI});
@@ -136,18 +145,21 @@ TEST_CASE(
       "If we drive along 𝑦 = 𝑥 in the direction of increasing 𝑥 and 𝑦, but "
       "tracking reference expects the opposite, we should get tracking "
       "error vectors double of the position vectors") {
-    for (auto& each : c.v) each = 1.f;
-    for (auto& each : c.Dth) each = 0;
-    for (auto& each : c.th) each = M_PI_4;
-    c.Dx[0] = M_SQRT1_2;
-    c.Dy[0] = M_SQRT1_2;
+    const auto c = [base] {
+      auto c = base;
+      c.Dx[0] = M_SQRT1_2;
+      c.Dy[0] = M_SQRT1_2;
+      for (auto& each : c.v) each = 1.f;
+      for (auto& each : c.Dth) each = 0;
+      for (auto& each : c.th) each = M_PI_4;
+      set_array(c.xref,
+                {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
+      set_array(c.yref,
+                {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
+      return c;
+    }();
 
-    set_array(c.xref,
-              {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
-    set_array(c.yref,
-              {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
-
-    auto result = dtl::forecast(std::move(c));
+    const auto result = dtl::forecast(std::move(c));
 
     REQUIRE_THAT(as_vector(result.ex),
                  Catch::Approx<double>({2 * M_SQRT1_2, 4 * M_SQRT1_2,
@@ -164,33 +176,39 @@ TEST_CASE(
     "Reherse some of the hand-calculations in the Object unit tests, this time "
     "checking that we fold properly over a trajectory of 𝑥𝑦-coordinates.",
     "[dtl][forecast][potential_gradient]") {
-  NMPCState<5> c;
-  c.x[0] = 0;
-  c.y[0] = 0;
-  c.th[0] = M_PI_4;
-  for (auto& each : c.dt) each = 1s;
-  set_array(c.v, {M_SQRT2, 1, 1, 1});
-  set_array(c.Dth, {0, -3 * M_PI_4, 0, 0});
-  //                ↑
-  //                We don't compute potential at the fixed “current” position.
-  //
-  // This combination of v and Dth should walk to corners of a triangle:
-  //    (0,0) → (0,0) → (1,1) → (1,0) → (1,-1)
-  //
-  //            │  • (1,1)
-  //            │ ↗↓
-  //      (0,0)—•——•—(1,0)
-  //            │  ↓
-  //            │  • (1,-1)
-  //
-  // We'll check this later.
+  const auto c = [] {
+    NMPCState<5> c;
+    c.x[0] = 0;
+    c.y[0] = 0;
+    c.th[0] = M_PI_4;
+    c.Dx[0] = 0;
+    c.Dy[0] = 0;
+    set_array(c.dt, {1s, 1s, 1s, 1s});
+    set_array(c.v, {M_SQRT2, 1, 1, 1});
+    set_array(c.Dth, {0, -3 * M_PI_4, 0, 0});
+    //                ↑
+    //                We don't compute potential at the fixed “current”
+    //                position.
+    //
+    // This combination of v and Dth should walk to corners of a triangle:
+    //    (0,0) → (0,0) → (1,1) → (1,0) → (1,-1)
+    //
+    //            │  • (1,1)
+    //            │ ↗↓
+    //      (0,0)—•——•—(1,0)
+    //            │  ↓
+    //            │  • (1,-1)
+    //
+    // We'll check this later.
 
-  c.obstacles.push_back(ob::Point{0, 0, 2, 1});
-  c.obstacles.push_back(ob::Null{});
-  c.obstacles.push_back(ob::Point{0, 0, 2, 1});
-  c.obstacles.push_back(ob::Null{});
+    c.obstacles.push_back(ob::Point{0, 0, 2, 1});
+    c.obstacles.push_back(ob::Null{});
+    c.obstacles.push_back(ob::Point{0, 0, 2, 1});
+    c.obstacles.push_back(ob::Null{});
+    return c;
+  }();
 
-  const NMPCState<5> result = forecast(c);
+  const auto result = dtl::forecast(c);
 
   CHECK_THAT(as_vector(result.x),
              Catch::Approx<double>({0, 0, 1, 1, 1}).margin(1e-25));
@@ -210,31 +228,34 @@ TEST_CASE(
     "obstacles, the Lagrange multipliers and gradient along the trajectory "
     "should vanish.",
     "[dtl][lagrange_gradient]") {
-  NMPCState<5> c;
-  for (auto& each : c.dt) each = 1s;
-  c.x[0] = 0;
-  c.y[0] = 0;
-  c.th[0] = M_PI_4;
-  c.Dx[0] = 1;
-  c.Dy[0] = 1;
-  set_array(c.xref, {1, 2, 3, 4});
-  set_array(c.yref, {1, 2, 3, 4});
-  set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-  set_array(c.Dth, {0, 0, 0, 0});
-  c.Q0 = 1;
-  c.Q = 1;
-  c.R = 1;
+  const auto c = [] {
+    NMPCState<5> c;
+    for (auto& each : c.dt) each = 1s;
+    c.x[0] = 0;
+    c.y[0] = 0;
+    c.th[0] = M_PI_4;
+    c.Dx[0] = 1;
+    c.Dy[0] = 1;
+    set_array(c.xref, {1, 2, 3, 4});
+    set_array(c.yref, {1, 2, 3, 4});
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    set_array(c.Dth, {0, 0, 0, 0});
+    c.Q0 = 1;
+    c.Q = 1;
+    c.R = 1;
+    return c;
+  }();
 
-  auto result = lagrange_gradient(forecast(c));
+  const auto result = dtl::lagrange_gradient(dtl::forecast(c));
 
   CHECK(as_vector(result.ex) == std::vector<double>{0, 0, 0, 0});
   CHECK(as_vector(result.ey) == std::vector<double>{0, 0, 0, 0});
 
-  CHECK(as_vector(result.px) == std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.py) == std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.pDx) == std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.pDy) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(result.px) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(result.py) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(result.pDx) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(result.pDy) == std::vector<double>{0, 0, 0, 0});
 
-  CHECK(as_vector(result.grad) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(result.grad) == std::vector<double>{0, 0, 0, 0});
 }
 

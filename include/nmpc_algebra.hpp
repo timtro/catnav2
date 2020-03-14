@@ -18,7 +18,7 @@ using namespace std::chrono_literals;
 template <std::size_t N, typename Clock = chrono::steady_clock>
 struct NMPCState {
   chrono::time_point<Clock> time;
-  std::array<chrono::duration<float>, N> dt;
+  chrono::duration<double> dt[N - 1];
   // State Vector:
   double x[N];
   double y[N];
@@ -69,8 +69,7 @@ namespace dtl {
   }
 
   template <std::size_t N, typename Clock = chrono::steady_clock>
-  constexpr NMPCState<N, Clock> forecast(
-      NMPCState<N, Clock> s) noexcept {
+  constexpr NMPCState<N, Clock> forecast(NMPCState<N, Clock> s) noexcept {
     for (unsigned k = 1; k < N; ++k) {
       s.th[k] = fma(s.Dth[k - 1], s.dt[k - 1].count(), s.th[k - 1]);
       s.x[k] = fma(s.Dx[k - 1], s.dt[k - 1].count(), s.x[k - 1]);
@@ -125,8 +124,6 @@ namespace dtl {
   }
 
 }  // namespace dtl
-
-using namespace dtl;
 
 template <std::size_t N, typename Clock = chrono::steady_clock>
 constexpr auto nmpc_algebra() {
