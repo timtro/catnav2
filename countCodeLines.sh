@@ -1,7 +1,7 @@
 #!/bin/bash
-cloc --exclude-list-file=countCodeExclude.txt  src/ tests/ tools/
+cloc  src/ lib/ include/ test/
 
-count=`cloc --exclude-list-file=countCodeExclude.txt  src/ tests/ tools/ | awk '{if ($1=="SUM:") print $5}'`
+count=`cloc  src/ lib/ include/ test/ | awk '{if ($1=="SUM:") print $5}'`
 echo
 echo "TOTAL Line Count: $count"
 
