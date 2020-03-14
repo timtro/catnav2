@@ -69,7 +69,7 @@ namespace dtl {
   }
 
   template <std::size_t N, typename Clock = chrono::steady_clock>
-  constexpr NMPCState<N, Clock> compute_forecast(
+  constexpr NMPCState<N, Clock> forecast(
       NMPCState<N, Clock> s) noexcept {
     for (unsigned k = 1; k < N; ++k) {
       s.th[k] = fma(s.Dth[k - 1], s.dt[k - 1].count(), s.th[k - 1]);
@@ -88,17 +88,21 @@ namespace dtl {
     return s;
   }
 
-  /*!
+  /*
    * Calculate gradient from ∂J = ∑∂H/∂u ∂u. In doing so, the Lagrange
    * multipliers are computed.
    */
   template <std::size_t N, typename Clock = chrono::steady_clock>
-  constexpr NMPCState<N, Clock> compute_gradient(
+  constexpr NMPCState<N, Clock> lagrange_gradient(
       NMPCState<N, Clock> s) noexcept {
     s.gradNorm = 0.;
     s.px[N - 2] = s.Q0 * s.ex[N - 2];
     s.py[N - 2] = s.Q0 * s.ey[N - 2];
-    /*!
+    s.pDx[N - 2] = 0;
+    s.pDy[N - 2] = 0;
+    s.pth[N - 2] = 0;
+    s.grad[N - 2] = 0;
+    /*
      * Get the gradient ∂H/∂u_k, for each step, k in the horizon, loop
      * through each k in N. This involves computing the obstacle potential
      * and Lagrange multipliers. Then, the control plan is updated by
@@ -106,12 +110,12 @@ namespace dtl {
      */
     for (int k = N - 3; k >= 0; --k) {
       s.px[k] = s.Q * s.ex[k] + s.DPhiX[k] + s.px[k + 1];
-      s.pDx[k] = s.px[k + 1] * s.dt[k];
+      s.pDx[k] = s.px[k + 1] * s.dt[k].count();
       s.py[k] = s.Q * s.ey[k] + s.DPhiY[k] + s.py[k + 1];
-      s.pDy[k] = s.py[k + 1] * s.dt[k];
+      s.pDy[k] = s.py[k + 1] * s.dt[k].count();
       s.pth[k] = s.pth[k + 1] + s.pDy[k + 1] * s.v[k] * std::cos(s.th[k])
                  - s.pDx[k + 1] * s.v[k] * std::sin(s.th[k]);
-      s.grad[k] = s.R * s.Dth[k] + s.pth[k + 1] * s.dt[k];
+      s.grad[k] = s.R * s.Dth[k] + s.pth[k + 1] * s.dt[k].count();
       s.gradNorm += s.grad[k] * s.grad[k];
     }
 
@@ -150,9 +154,9 @@ constexpr auto nmpc_algebra() {
   /*     return std::move( */
   /*       iterate_until( */
   /*         compose */
-  /*           ( compute_gradient */
+  /*           ( lagrange_gradient */
   /*           , compute_path_potential_gradient */
-  /*           , compute_forecast */
+  /*           , forecast */
   /*           ), */
   /*         gradNorm_within(0.1))); */
   /*     // clang-format on */

@@ -43,7 +43,7 @@ TEST_CASE("Use 'iterate_while' to make a toy factorial function.",
 TEST_CASE(
     "Forcasting the pose and tracking error of a Nav2 robot starting at the "
     "origin.",
-    "[dtl][compute_forecast]") {
+    "[dtl][forecast]") {
   constexpr std::size_t N = 5;
 
   NMPCState<N> c;
@@ -65,7 +65,7 @@ TEST_CASE(
     for (auto& each : c.xref) each = 0;
     for (auto& each : c.yref) each = 0;
 
-    auto result = dtl::compute_forecast(std::move(c));
+    auto result = dtl::forecast(std::move(c));
 
     REQUIRE(as_vector(result.x) == std::vector<double>{0, 0, 0, 0, 0});
     REQUIRE(as_vector(result.y) == std::vector<double>{0, 0, 0, 0, 0});
@@ -89,7 +89,7 @@ TEST_CASE(
     set_array(c.xref, {1, 2, 3, 4});
     set_array(c.yref, {0, 0, 0, 0});
 
-    auto result = dtl::compute_forecast(std::move(c));
+    auto result = dtl::forecast(std::move(c));
 
     REQUIRE(as_vector(result.x) == std::vector<double>{0, 1, 2, 3, 4});
     REQUIRE(as_vector(result.y) == std::vector<double>{0, 0, 0, 0, 0});
@@ -113,7 +113,7 @@ TEST_CASE(
     set_array(c.xref, {1, 1, 0, 0});
     set_array(c.yref, {0, 1, 1, 0});
 
-    NMPCState<N> result = dtl::compute_forecast(std::move(c));
+    NMPCState<N> result = dtl::forecast(std::move(c));
 
     REQUIRE(as_vector(result.th)
             == std::vector<double>{0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI});
@@ -147,7 +147,7 @@ TEST_CASE(
     set_array(c.yref,
               {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
 
-    auto result = dtl::compute_forecast(std::move(c));
+    auto result = dtl::forecast(std::move(c));
 
     REQUIRE_THAT(as_vector(result.ex),
                  Catch::Approx<double>({2 * M_SQRT1_2, 4 * M_SQRT1_2,
@@ -163,7 +163,7 @@ TEST_CASE(
 TEST_CASE(
     "Reherse some of the hand-calculations in the Object unit tests, this time "
     "checking that we fold properly over a trajectory of 𝑥𝑦-coordinates.",
-    "[dtl][compute_forecast][potential_gradient]") {
+    "[dtl][forecast][potential_gradient]") {
   NMPCState<5> c;
   c.x[0] = 0;
   c.y[0] = 0;
@@ -190,7 +190,7 @@ TEST_CASE(
   c.obstacles.push_back(ob::Point{0, 0, 2, 1});
   c.obstacles.push_back(ob::Null{});
 
-  const NMPCState<5> result = compute_forecast(c);
+  const NMPCState<5> result = forecast(c);
 
   CHECK_THAT(as_vector(result.x),
              Catch::Approx<double>({0, 0, 1, 1, 1}).margin(1e-25));
@@ -204,3 +204,37 @@ TEST_CASE(
   REQUIRE_THAT(as_vector(result.DPhiY),
                Catch::Approx<double>({0, 4. / 9, 0, -4. / 9}).margin(1e-25));
 }
+
+TEST_CASE(
+    "When the forecast trajectory follows the reference path, and there are no "
+    "obstacles, the Lagrange multipliers and gradient along the trajectory "
+    "should vanish.",
+    "[dtl][lagrange_gradient]") {
+  NMPCState<5> c;
+  for (auto& each : c.dt) each = 1s;
+  c.x[0] = 0;
+  c.y[0] = 0;
+  c.th[0] = M_PI_4;
+  c.Dx[0] = 1;
+  c.Dy[0] = 1;
+  set_array(c.xref, {1, 2, 3, 4});
+  set_array(c.yref, {1, 2, 3, 4});
+  set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+  set_array(c.Dth, {0, 0, 0, 0});
+  c.Q0 = 1;
+  c.Q = 1;
+  c.R = 1;
+
+  auto result = lagrange_gradient(forecast(c));
+
+  CHECK(as_vector(result.ex) == std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.ey) == std::vector<double>{0, 0, 0, 0});
+
+  CHECK(as_vector(result.px) == std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.py) == std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.pDx) == std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.pDy) == std::vector<double>{0, 0, 0, 0});
+
+  CHECK(as_vector(result.grad) == std::vector<double>{0, 0, 0, 0});
+}
+
