@@ -226,7 +226,7 @@ TEST_CASE(
 TEST_CASE(
     "When the forecast trajectory follows the reference path, and there are no "
     "obstacles, the Lagrange multipliers and gradient along the trajectory "
-    "should vanish.",
+    "should vanish. `gradNorms` prv— and cur— should get swapped.",
     "[dtl][lagrange_gradient]") {
   const auto c = [] {
     NMPCState<5> c;
@@ -243,6 +243,7 @@ TEST_CASE(
     c.Q0 = 1;
     c.Q = 1;
     c.R = 1;
+    c.curGradNorm = 5; // REQUIREd to end up in prvGradNorm.
     return c;
   }();
 
@@ -257,5 +258,7 @@ TEST_CASE(
   REQUIRE(as_vector(result.pDy) == std::vector<double>{0, 0, 0, 0});
 
   REQUIRE(as_vector(result.grad) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(result.curGradNorm == 0);
+  REQUIRE(result.prvGradNorm == 5);
 }
 

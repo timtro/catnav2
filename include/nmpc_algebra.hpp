@@ -40,7 +40,8 @@ struct NMPCState {
   double pth[N - 1];
   // Gradients:
   double grad[N - 1];
-  double gradNorm;
+  double curGradNorm;
+  double prvGradNorm;
   // Tracking reference
   double xref[N - 1];
   double yref[N - 1];
@@ -70,7 +71,7 @@ namespace dtl {
 
   template <std::size_t N, typename Clock = chrono::steady_clock>
   constexpr NMPCState<N, Clock> forecast(NMPCState<N, Clock> s) noexcept {
-    for (unsigned k = 1; k < N; ++k) {
+    for (std::size_t k = 1; k < N; ++k) {
       s.th[k] = fma(s.Dth[k - 1], s.dt[k - 1].count(), s.th[k - 1]);
       s.x[k] = fma(s.Dx[k - 1], s.dt[k - 1].count(), s.x[k - 1]);
       s.Dx[k] = s.v[k - 1] * std::cos(s.th[k]);
@@ -94,7 +95,8 @@ namespace dtl {
   template <std::size_t N, typename Clock = chrono::steady_clock>
   constexpr NMPCState<N, Clock> lagrange_gradient(
       NMPCState<N, Clock> s) noexcept {
-    s.gradNorm = 0.;
+    s.prvGradNorm = s.curGradNorm;
+    s.curGradNorm = 0;
     s.px[N - 2] = s.Q0 * s.ex[N - 2];
     s.py[N - 2] = s.Q0 * s.ey[N - 2];
     s.pDx[N - 2] = 0;
@@ -115,10 +117,9 @@ namespace dtl {
       s.pth[k] = s.pth[k + 1] + s.pDy[k + 1] * s.v[k] * std::cos(s.th[k])
                  - s.pDx[k + 1] * s.v[k] * std::sin(s.th[k]);
       s.grad[k] = s.R * s.Dth[k] + s.pth[k + 1] * s.dt[k].count();
-      s.gradNorm += s.grad[k] * s.grad[k];
+      s.curGradNorm += s.grad[k] * s.grad[k];
     }
-
-    s.gradNorm = sqrt(s.gradNorm);
+    s.curGradNorm = sqrt(s.curGradNorm);
 
     return s;
   }
