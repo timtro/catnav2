@@ -1,7 +1,10 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <experimental/type_traits>
 #include <list>
+#include <numeric>
 #include <type_traits>
 #include <vector>
 

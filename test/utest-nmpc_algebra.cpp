@@ -184,13 +184,8 @@ TEST_CASE(
     c.Dx[0] = 0;
     c.Dy[0] = 0;
     set_array(c.dt, {1s, 1s, 1s, 1s});
-    set_array(c.v, {M_SQRT2, 1, 1, 1});
-    set_array(c.Dth, {0, -3 * M_PI_4, 0, 0});
-    //                ↑
-    //                We don't compute potential at the fixed “current”
-    //                position.
     //
-    // This combination of v and Dth should walk to corners of a triangle:
+    // Following combination of v and Dth should walk to corners of a triangle:
     //    (0,0) → (0,0) → (1,1) → (1,0) → (1,-1)
     //
     //            │  • (1,1)
@@ -200,7 +195,14 @@ TEST_CASE(
     //            │  • (1,-1)
     //
     // We'll check this later.
-
+    //
+    set_array(c.v, {M_SQRT2, 1, 1, 1});
+    set_array(c.Dth, {0, -3 * M_PI_4, 0, 0});
+    //                ↑
+    //                dtl::forecast doesn't compute potential at the fixed
+    //                “current” position, since it doesn't factor into the
+    //                control output sequence.
+    //
     c.obstacles.push_back(ob::Point{0, 0, 2, 1});
     c.obstacles.push_back(ob::Null{});
     c.obstacles.push_back(ob::Point{0, 0, 2, 1});
@@ -243,7 +245,7 @@ TEST_CASE(
     c.Q0 = 1;
     c.Q = 1;
     c.R = 1;
-    c.curGradNorm = 5; // REQUIREd to end up in prvGradNorm.
+    c.curGradNorm = 5;  // REQUIREd to end up in prvGradNorm.
     return c;
   }();
 

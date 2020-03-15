@@ -23,14 +23,16 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} ${common} ${optimizations_releas
 
 # for clang++ use -fuse-ld=gold to avoid LD error "File format not recognized"
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-  if(CMAKE_BUILD_TYPE MATCHES DEBUG)
+  # message("Clang detected")
+  if(CMAKE_BUILD_TYPE MATCHES Debug)
+    # message("Using clang sanitizers")
     # set(sanitizer "-fsanitize=address")
     # set(sanitizer "-fsanitize=memory")
     # set(sanitizer "-fsanitize=memory -fsanitize-memory-track-origins")
     # set(sanitizer "-fsanitize=thread")
-    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-ld=gold")
+    # set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=gold")
     # set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${sanitizer}")
-  endif(CMAKE_BUILD_TYPE MATCHES DEBUG)
+  endif(CMAKE_BUILD_TYPE MATCHES Debug)
 endif()
 
 # find_package(Eigen3 REQUIRED)

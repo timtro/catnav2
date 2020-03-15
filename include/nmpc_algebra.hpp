@@ -65,7 +65,8 @@ namespace dtl {
   }
 
   template <std::size_t N, typename Clock>
-  auto gradNorm_within(NMPCState<N, Clock> x, double epsilon) noexcept {
+  constexpr bool gradNorm_within(NMPCState<N, Clock> x,
+                                 double epsilon) noexcept {
     return (x.gradNorm <= epsilon) ? true : false;
   }
 
