@@ -4,6 +4,8 @@
 
 #include "../include/nmpc_algebra.hpp"
 
+using namespace std::chrono_literals;
+
 template <typename T, std::size_t N>
 constexpr auto as_vector(T (&x)[N]) {
   return std::vector(x, x + N);

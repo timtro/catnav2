@@ -15,8 +15,6 @@
 #include "../lib/Nav2remote.hpp"
 #include "../lib/Obstacle.hpp"
 
-using namespace std::chrono_literals;
-
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 struct NMPCState {
   std::chrono::time_point<Clock> time;
@@ -28,10 +26,15 @@ struct NMPCState {
   double Dx[N];
   double Dy[N];
   double Dth[N - 1];
-  // Other:
+  // Nav2 gives (𝑥, 𝑦) and robot orientation θ. For line following,
+  // we want (v, θ), and we control ω = D θ. So we need 𝑣:
   double v[N - 1];
+  // Tracking reference and resulting error (𝑥,𝑦) - (𝑥_ref, 𝑦_ref):
+  double xref[N - 1];
+  double yref[N - 1];
   double ex[N - 1];
   double ey[N - 1];
+  // Obstacle potential gradient for each point of the trajectory:
   double DPhiX[N - 1];
   double DPhiY[N - 1];
   // Lagrange Multipliers:
@@ -40,31 +43,41 @@ struct NMPCState {
   double pDx[N - 1];
   double pDy[N - 1];
   double pth[N - 1];
-  // Gradients:
+  // Optimisation gradients:
   double grad[N - 1];
   double curGradNorm;
   double prvGradNorm;
-  // Tracking reference
-  double xref[N - 1];
-  double yref[N - 1];
   // Coefficients
   double R,  // Control effort penalty
       Q,     // Tracking error penalty
       Q0;    // Terminal error penalty
+  // List of obstacles used to compute (DPhiX, DPhiY).
   std::list<ob::Obstacle> obstacles;
 };
 
 namespace dtl {
 
+  // iterate_while : (I → I) × (I → bool) × I → I
+  //                └───────┘ └──────────┘
+  //                  f : F      p : P
+  //
+  // Iterates and endofunction, I → I, while a predicate, I → bool, returns
+  // true, starting from an initial value of I.
   template <typename F, typename P, typename I>
   constexpr auto iterate_while(F f, P p, I i) noexcept {
     do {
       i = std::invoke(f, i);
     } while (std::invoke(p, i));
-
     return i;
   }
 
+  // forecast : NMPCState → NMPCState
+  //
+  // Based on the initial pose, time intervals, speed plan, tracking reference &
+  // obstacles:
+  //   1. Euler integrate th, x, y, Dx, Dy,
+  //   2. compute tracking errors, and
+  //   3. compute the gradient of the obstacle potential.
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> forecast(NMPCState<N, Clock> s) noexcept {
     for (std::size_t k = 1; k < N; ++k) {
@@ -80,14 +93,13 @@ namespace dtl {
       std::tie(s.DPhiX[k - 1], s.DPhiY[k - 1]) = foldl(
           ob::g_phi_accuml(s.x[k], s.y[k]), std::pair{0., 0.}, s.obstacles);
     }
-
     return s;
   }
 
-  /*
-   * Calculate gradient from ∂J = ∑∂H/∂u ∂u. In doing so, the Lagrange
-   * multipliers are computed.
-   */
+  // lagrange_gradient : NMPCState → NMPCState
+  //
+  // Calculate gradient from ∂J = ∑∂ℋ/∂u ∂u. In doing so, the Lagrange
+  // multipliers are populated.
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> lagrange_gradient(
       NMPCState<N, Clock> s) noexcept {
@@ -99,12 +111,9 @@ namespace dtl {
     s.pDy[N - 2] = 0;
     s.pth[N - 2] = 0;
     s.grad[N - 2] = 0;
-    /*
-     * Get the gradient ∂H/∂u_k, for each step, k in the horizon, loop
-     * through each k in N. This involves computing the obstacle potential
-     * and Lagrange multipliers. Then, the control plan is updated by
-     * stepping against the direction of the gradient.
-     */
+    // Get the gradient ∂ℋ/∂uₖ, for each step, k in the horizon, loop
+    // through each k in N. This involves computing the obstacle potential
+    // and Lagrange multipliers.
     for (int k = N - 3; k >= 0; --k) {
       s.px[k] = s.Q * s.ex[k] + s.DPhiX[k] + s.px[k + 1];
       s.pDx[k] = s.px[k + 1] * s.dt[k].count();
@@ -120,18 +129,33 @@ namespace dtl {
     return s;
   }
 
+  // descend :: NMPCState → NMPCState
+  //
+  // Uses the scaling factor to descend the control varible in the direction of
+  // the computed gradient.
+  template <std::size_t N, typename Clock = std::chrono::steady_clock>
+  constexpr NMPCState<N, Clock> descend(NMPCState<N, Clock> c) noexcept {
+    constexpr double sdStepFactor = 0.1;
+    for (std::size_t i = 0; i < N - 1; ++i)
+      c.Dth[i] -= sdStepFactor * c.grad[i];
+    return c;
+  }
+
+  // sd_optimise : NMPCState → NMPCState
+  //
+  // A steepest/gradient descent algorithm that iteratively refines the control
+  // plan to minimize the cost functional.
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> sd_optimise(NMPCState<N, Clock> s) noexcept {
+    //
+    // step : NMPCState → NMPCState
+    //
     constexpr auto step = [](auto c) {
-      constexpr auto descend = [](auto c) {
-        constexpr double sdStepFactor = 0.1;
-        for (std::size_t i = 0; i < N - 1; ++i)
-          c.Dth[i] -= sdStepFactor * c.grad[i];
-        return c;
-      };
       return descend(lagrange_gradient(forecast(c)));
     };
 
+    // gradNorm_outside : double → NMPCState → bool
+    //
     constexpr auto gradNorm_outside = [](double epsilon) {
       return [epsilon](auto c) {
         return (c.curGradNorm >= epsilon) ? true : false;
@@ -152,6 +176,6 @@ constexpr auto nmpc_algebra() {
 
     ctrlState.time = errSigl.time;
 
-    return std::move(ctrlState);
+    return ctrlState;
   };
 }
