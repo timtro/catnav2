@@ -264,3 +264,66 @@ TEST_CASE(
   REQUIRE(result.prvGradNorm == 5);
 }
 
+TEST_CASE(
+    "With the outcome of the forecast engineered to match the reference path "
+    "(a straight line along 𝑦 = 𝑥 at constant speed), the steepest descent "
+    "should terminate in one step, with Dth unchanged.",
+    "[dtl][sd_optimise]") {
+  const auto c = [] {
+    NMPCState<5> c;
+    for (auto& each : c.dt) each = 1s;
+    c.x[0] = 0;
+    c.y[0] = 0;
+    c.th[0] = M_PI_4;
+    c.Dx[0] = 1;
+    c.Dy[0] = 1;
+    set_array(c.xref, {1, 2, 3, 4});
+    set_array(c.yref, {1, 2, 3, 4});
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    set_array(c.Dth, {0, 0, 0, 0});
+    c.Q0 = 1;
+    c.Q = 1;
+    c.R = 1;
+    c.curGradNorm = std::numeric_limits<double>::max();
+    return c;
+  }();
+
+  auto result = dtl::sd_optimise(c);
+
+  CHECK_THAT(as_vector(result.x), Catch::Equals<double>({0, 1, 2, 3, 4}));
+  CHECK_THAT(as_vector(result.y), Catch::Equals<double>({0, 1, 2, 3, 4}));
+  REQUIRE_THAT(as_vector(result.Dth), Catch::Equals<double>({0, 0, 0, 0}));
+  // This surreptitiously tests that there was only one iteration:
+  REQUIRE(result.prvGradNorm == std::numeric_limits<double>::max());
+}
+
+TEST_CASE(
+    "Starting in the direction to follow a straight line reference at a "
+    "constant speed, but with a wonky Dth, after sd_optimisation, we should "
+    "still end up near the reference path.") {
+  const auto c = [] {
+    NMPCState<5> c;
+    for (auto& each : c.dt) each = 1s;
+    c.x[0] = 0;
+    c.y[0] = 0;
+    c.th[0] = M_PI_4;
+    c.Dx[0] = 1;
+    c.Dy[0] = 1;
+    set_array(c.xref, {1, 2, 3, 4});
+    set_array(c.yref, {1, 2, 3, 4});
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    set_array(c.Dth, {M_PI_4, M_PI_4, M_PI_4, M_PI_4});
+    c.Q0 = 0;
+    c.Q = 1;
+    c.R = 0.5;
+    c.curGradNorm = std::numeric_limits<double>::max();
+    return c;
+  }();
+
+  auto result = dtl::sd_optimise(c);
+
+  CHECK_THAT(as_vector(result.x),
+             Catch::Approx<double>({0, 1, 2, 3, 4}).margin(0.1));
+  CHECK_THAT(as_vector(result.y),
+             Catch::Approx<double>({0, 1, 2, 3, 4}).margin(0.1));
+}

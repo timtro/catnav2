@@ -8,17 +8,19 @@
 #include <list>
 #include <variant>
 
+#include <boost/hana/functional/compose.hpp>
+#include <boost/hana/functional/curry.hpp>
+
 #include "../include/list-fmap.hpp"
 #include "../lib/Nav2remote.hpp"
 #include "../lib/Obstacle.hpp"
 
-namespace chrono = std::chrono;
 using namespace std::chrono_literals;
 
-template <std::size_t N, typename Clock = chrono::steady_clock>
+template <std::size_t N, typename Clock = std::chrono::steady_clock>
 struct NMPCState {
-  chrono::time_point<Clock> time;
-  chrono::duration<double> dt[N - 1];
+  std::chrono::time_point<Clock> time;
+  std::chrono::duration<double> dt[N - 1];
   // State Vector:
   double x[N];
   double y[N];
@@ -56,21 +58,14 @@ namespace dtl {
 
   template <typename F, typename P, typename I>
   constexpr auto iterate_while(F f, P p, I i) noexcept {
-    auto result = std::move(i);
     do {
-      result = std::invoke(f, result);
-    } while (std::invoke(p, result));
+      i = std::invoke(f, i);
+    } while (std::invoke(p, i));
 
-    return result;
+    return i;
   }
 
-  template <std::size_t N, typename Clock>
-  constexpr bool gradNorm_within(NMPCState<N, Clock> x,
-                                 double epsilon) noexcept {
-    return (x.gradNorm <= epsilon) ? true : false;
-  }
-
-  template <std::size_t N, typename Clock = chrono::steady_clock>
+  template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> forecast(NMPCState<N, Clock> s) noexcept {
     for (std::size_t k = 1; k < N; ++k) {
       s.th[k] = fma(s.Dth[k - 1], s.dt[k - 1].count(), s.th[k - 1]);
@@ -93,7 +88,7 @@ namespace dtl {
    * Calculate gradient from ∂J = ∑∂H/∂u ∂u. In doing so, the Lagrange
    * multipliers are computed.
    */
-  template <std::size_t N, typename Clock = chrono::steady_clock>
+  template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> lagrange_gradient(
       NMPCState<N, Clock> s) noexcept {
     s.prvGradNorm = s.curGradNorm;
@@ -125,39 +120,38 @@ namespace dtl {
     return s;
   }
 
+  template <std::size_t N, typename Clock = std::chrono::steady_clock>
+  constexpr NMPCState<N, Clock> sd_optimise(NMPCState<N, Clock> s) noexcept {
+    constexpr auto step = [](auto c) {
+      constexpr auto descend = [](auto c) {
+        constexpr double sdStepFactor = 0.1;
+        for (std::size_t i = 0; i < N - 1; ++i)
+          c.Dth[i] -= sdStepFactor * c.grad[i];
+        return c;
+      };
+      return descend(lagrange_gradient(forecast(c)));
+    };
+
+    constexpr auto gradNorm_outside = [](double epsilon) {
+      return [epsilon](auto c) {
+        return (c.curGradNorm >= epsilon) ? true : false;
+      };
+    };
+
+    return iterate_while(step, gradNorm_outside(0.01), s);
+  }
+
 }  // namespace dtl
 
-template <std::size_t N, typename Clock = chrono::steady_clock>
+template <std::size_t N, typename Clock = std::chrono::steady_clock>
 constexpr auto nmpc_algebra() {
   return [](NMPCState<N, Clock>&& ctrlState,
             VMePose<Clock> errSigl) -> NMPCState<N, Clock> {
-    const chrono::duration<double> deltaT = errSigl.time - ctrlState.time;
-    if (deltaT <= chrono::seconds{0}) return ctrlState;
+    const std::chrono::duration<double> deltaT = errSigl.time - ctrlState.time;
+    if (deltaT <= std::chrono::seconds{0}) return ctrlState;
 
     ctrlState.time = errSigl.time;
 
     return std::move(ctrlState);
   };
-
-  /* template <std::size_t N, typename Clock = chrono::steady_clock> */
-  /* auto nmpc_algebra() { */
-  /*   return [](NMPCState<horizonSteps, Clock>&& ctrlState, */
-  /*             VMePose<Clock> errSigl) -> NMPCState<N, Clock> { */
-  /*     const chrono::duration<double> deltaT = errSigl.time - ctrlState.time;
-   */
-  /*     if (deltaT <= chrono::seconds{0}) return ctrlState; */
-
-  /*     ctrlState.time = errSigl.time; */
-
-  /*     // clang-format off */
-  /*     return std::move( */
-  /*       iterate_until( */
-  /*         compose */
-  /*           ( lagrange_gradient */
-  /*           , compute_path_potential_gradient */
-  /*           , forecast */
-  /*           ), */
-  /*         gradNorm_within(0.1))); */
-  /*     // clang-format on */
-  /*   }; */
 }
