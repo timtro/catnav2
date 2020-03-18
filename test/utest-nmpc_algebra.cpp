@@ -43,12 +43,12 @@ TEST_CASE("Check for zero-initialisation", "[NMPCState]") {
 
 TEST_CASE("Use 'iterate_while' to make a toy factorial function.",
           "[dtl][iterate_while]") {
-  constexpr auto minus_one_and_times = [](std::pair<int, int> p) {
+  constexpr auto minus_one_and_times = [](std::pair<int, int> p) noexcept {
     return (p.first > 1) ? std::pair{p.first - 1, p.first * p.second}
                          : std::pair{1, p.second};
   };
 
-  constexpr auto first_gt_1 = [](const std::pair<int, int>& p) {
+  constexpr auto first_gt_1 = [](const std::pair<int, int>& p) noexcept {
     return p.first > 1;
   };
 

@@ -65,6 +65,8 @@ namespace dtl {
   // true, starting from an initial value of I.
   template <typename F, typename P, typename I>
   constexpr auto iterate_while(F f, P p, I i) noexcept {
+    static_assert(std::is_nothrow_invocable_r_v<I, F, I>);
+    static_assert(std::is_nothrow_invocable_r_v<bool, P, I>);
     do {
       i = std::invoke(f, i);
     } while (std::invoke(p, i));
@@ -150,14 +152,14 @@ namespace dtl {
     //
     // step : NMPCState → NMPCState
     //
-    constexpr auto step = [](auto c) {
+    constexpr auto step = [](auto c) noexcept {
       return descend(lagrange_gradient(forecast(c)));
     };
 
     // gradNorm_outside : double → NMPCState → bool
     //
     constexpr auto gradNorm_outside = [](double epsilon) {
-      return [epsilon](auto c) {
+      return [epsilon](auto c) noexcept {
         return (c.curGradNorm >= epsilon) ? true : false;
       };
     };
