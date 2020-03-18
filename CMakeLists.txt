@@ -1,13 +1,12 @@
 cmake_minimum_required (VERSION 2.8)
 
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_COMPILER /usr/bin/clang-8)
 set(CMAKE_CXX_COMPILER /usr/bin/clang++-8)
 set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(vme-ctrl-algebra)
+project(catnav2)
 
 # set (CMAKE_CXX_STANDARD 17)
 set(common "-fno-omit-frame-pointer -pg -std=c++17")

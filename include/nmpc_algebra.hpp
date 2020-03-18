@@ -20,37 +20,37 @@ struct NMPCState {
   std::chrono::time_point<Clock> time;
   std::chrono::duration<double> dt[N - 1];
   // State Vector:
-  double x[N];
-  double y[N];
-  double th[N];
-  double Dx[N];
-  double Dy[N];
-  double Dth[N - 1];
+  double x[N] = {{0}};
+  double y[N] = {{0}};
+  double th[N] = {{0}};
+  double Dx[N] = {{0}};
+  double Dy[N] = {{0}};
+  double Dth[N - 1] = {{0}};
   // Nav2 gives (𝑥, 𝑦) and robot orientation θ. For line following,
   // we want (v, θ), and we control ω = D θ. So we need 𝑣:
-  double v[N - 1];
+  double v[N - 1] = {{0}};
   // Tracking reference and resulting error (𝑥,𝑦) - (𝑥_ref, 𝑦_ref):
-  double xref[N - 1];
-  double yref[N - 1];
-  double ex[N - 1];
-  double ey[N - 1];
+  double xref[N - 1] = {{0}};
+  double yref[N - 1] = {{0}};
+  double ex[N - 1] = {{0}};
+  double ey[N - 1] = {{0}};
   // Obstacle potential gradient for each point of the trajectory:
-  double DPhiX[N - 1];
-  double DPhiY[N - 1];
+  double DPhiX[N - 1] = {{0}};
+  double DPhiY[N - 1] = {{0}};
   // Lagrange Multipliers:
-  double px[N - 1];
-  double py[N - 1];
-  double pDx[N - 1];
-  double pDy[N - 1];
-  double pth[N - 1];
+  double px[N - 1] = {{0}};
+  double py[N - 1] = {{0}};
+  double pDx[N - 1] = {{0}};
+  double pDy[N - 1] = {{0}};
+  double pth[N - 1] = {{0}};
   // Optimisation gradients:
-  double grad[N - 1];
-  double curGradNorm;
-  double prvGradNorm;
+  double grad[N - 1] = {{0}};
+  double curGradNorm = 0;
+  double prvGradNorm = 0;
   // Coefficients
-  double R,  // Control effort penalty
-      Q,     // Tracking error penalty
-      Q0;    // Terminal error penalty
+  double R = 0,  // Control effort penalty
+      Q = 0,     // Tracking error penalty
+      Q0 = 0;    // Terminal error penalty
   // List of obstacles used to compute (DPhiX, DPhiY).
   std::list<ob::Obstacle> obstacles;
 };
@@ -165,17 +165,33 @@ namespace dtl {
     return iterate_while(step, gradNorm_outside(0.01), s);
   }
 
+  // initialize : NMPCState × ( ⋯ ) → NMPCState
+  // (x₀, y₀, th₀, Dx₀, Dy₀, Dth₀), default to 0
+
+  // plan_reference : NMPCState × (double × double) → NMPCState
+  //
+  // Given a target destination, the tracking reference is set to the sampled
+  // straight line from the current position (x₀, y₀) to the target with point
+  // separations determined by dtₖ [and 𝑣ₖ, or should I set these as part of the
+  // plan?].
+
 }  // namespace dtl
 
-template <std::size_t N, typename Clock = std::chrono::steady_clock>
-constexpr auto nmpc_algebra() {
-  return [](NMPCState<N, Clock>&& ctrlState,
-            VMePose<Clock> errSigl) -> NMPCState<N, Clock> {
-    const std::chrono::duration<double> deltaT = errSigl.time - ctrlState.time;
-    if (deltaT <= std::chrono::seconds{0}) return ctrlState;
+//                                      __         __
+//    ___  __ _  ___  ____        ___ _/ /__  ___ / /  _______ _
+//   / _ \/  ' \/ _ \/ __/       / _ `/ / _ `/ -_) _ \/ __/ _ `/
+//  /_//_/_/_/_/ .__/\__/  ____  \_,_/_/\_, /\__/_.__/_/  \_,_/
+//            /_/         /___/        /___/
+//
+// nmpc_algebra : NMPCState × PlantSignal → NMPCState
+//
+// template <std::size_t N, typename Clock = std::chrono::steady_clock>
+// constexpr auto nmpc_algebra() {
+//   return [](NMPCState<N, Clock>&& ctrlState,
+//             PlantSignal<Clock> pSigl) -> NMPCState<N, Clock> {
+//     const std::chrono::duration<double> deltaT = pSigl.time - ctrlState.time;
+//     if (deltaT <= std::chrono::seconds{0}) return ctrlState;
 
-    ctrlState.time = errSigl.time;
-
-    return ctrlState;
-  };
-}
+//     return ctrlState;
+//   };
+// }

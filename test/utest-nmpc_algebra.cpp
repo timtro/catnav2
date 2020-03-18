@@ -17,6 +17,30 @@ constexpr void set_array(T (&x)[N], std::array<T, N>&& list) {
   for (std::size_t i = 0; i < N; ++i) x[i] = list[i];
 }
 
+TEST_CASE("Check for zero-initialisation", "[NMPCState]") {
+  NMPCState<5> c;
+
+  REQUIRE(as_vector(c.x) == std::vector<double>{0, 0, 0, 0, 0});
+  REQUIRE(as_vector(c.y) == std::vector<double>{0, 0, 0, 0, 0});
+  REQUIRE(as_vector(c.th) == std::vector<double>{0, 0, 0, 0, 0});
+  REQUIRE(as_vector(c.Dx) == std::vector<double>{0, 0, 0, 0, 0});
+  REQUIRE(as_vector(c.Dy) == std::vector<double>{0, 0, 0, 0, 0});
+  REQUIRE(as_vector(c.Dth) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.v) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.xref) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.yref) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.ex) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.ey) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.DPhiX) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.DPhiY) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.px) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.py) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.pDx) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.pDy) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.pth) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.grad) == std::vector<double>{0, 0, 0, 0});
+}
+
 TEST_CASE("Use 'iterate_while' to make a toy factorial function.",
           "[dtl][iterate_while]") {
   constexpr auto minus_one_and_times = [](std::pair<int, int> p) {
