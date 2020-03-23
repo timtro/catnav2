@@ -39,3 +39,10 @@ TEST_CASE("Test that quandrance() gives expected results.") {
   CHECK(quadrance(XY{0, 0}) == 0);
   CHECK(quadrance(XY{1, 1}) == 2);
 }
+
+TEST_CASE("Should convert to a tuple of references to double for std::tie") {
+  double x = 0, y = 0;
+  std::tie(x, y) = XY{-5, 10};
+  REQUIRE(x == -5);
+  REQUIRE(y == 10);
+}
