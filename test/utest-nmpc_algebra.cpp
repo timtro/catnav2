@@ -230,9 +230,9 @@ TEST_CASE(
     //                “current” position, since it doesn't factor into the
     //                control output sequence.
     //
-    c.obstacles.push_back(ob::Point{0, 0, 2, 1});
+    c.obstacles.push_back(ob::Point{{0, 0}, 2, 1});
     c.obstacles.push_back(ob::Null{});
-    c.obstacles.push_back(ob::Point{0, 0, 2, 1});
+    c.obstacles.push_back(ob::Point{{0, 0}, 2, 1});
     c.obstacles.push_back(ob::Null{});
     return c;
   }();
@@ -449,8 +449,8 @@ TEST_CASE("", "[nmpc-algebra]") {
     WorldState<> w;
     w.tgt = {1, 1};
     w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, 1, 1};
-    w.obstacles = std::vector<ob::Obstacle>{ob::Point{2.5, 0, 1, .01},
-                                            ob::Point{3.5, 1, 2, 0.01}};
+    w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
+                                            ob::Point{{3.5, 1}, 2, 0.01}};
     return w;
   }();
 
@@ -496,8 +496,8 @@ TEST_CASE(
     WorldState<> w;
     w.tgt = {1, 1};
     w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, .8, 1.5};
-    w.obstacles = std::vector<ob::Obstacle>{ob::Point{2.5, 0, 1, .01},
-                                            ob::Point{3.5, 1, 2, 0.01}};
+    w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
+                                            ob::Point{{3.5, 1}, 2, 0.01}};
     return w;
   }();
 

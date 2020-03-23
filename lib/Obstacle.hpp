@@ -2,8 +2,7 @@
 
 #include <variant>
 
-/* #include <boost/hana/functional/overload.hpp> */
-/* using boost::hana::overload; */
+#include "../include/XY.hpp"
 
 namespace ob {
 
@@ -16,22 +15,18 @@ namespace ob {
      *          ρ
      *         𝑟  + ε
      */
-    double x;
-    double y;
+    XY coords;
     double pwr;      // pwr ≔ ρ
     double epsilon;  // epsilon ≔ ε
   };
 
   using Obstacle = std::variant<ob::Null, ob::Point>;
 
-  std::pair<double, double> g_phi(double, double, const ob::Obstacle);
+  XY g_phi(XY, const ob::Obstacle);
 
-  constexpr auto g_phi_accuml(double x, double y) {
-    return [x, y](std::pair<double, double> accum,
-                  const Obstacle o) -> std::pair<double, double> {
-      std::pair<double, double> xy = g_phi(x, y, o);
-      return {accum.first + xy.first, accum.second + xy.second};
-    };
+  constexpr auto g_phi_accuml(XY p) {
+    return
+        [p](XY accum, const Obstacle o) -> XY { return accum + g_phi(p, o); };
   }
 
 }  // namespace ob

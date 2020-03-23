@@ -101,7 +101,7 @@ namespace dtl {
       c.ey[k - 1] = c.y[k] - c.yref[k - 1];
 
       std::tie(c.DPhiX[k - 1], c.DPhiY[k - 1]) = foldl(
-          ob::g_phi_accuml(c.x[k], c.y[k]), std::pair{0., 0.}, c.obstacles);
+          ob::g_phi_accuml(XY{c.x[k], c.y[k]}), XY{0, 0}, c.obstacles);
     }
     return c;
   }

@@ -4,13 +4,11 @@
 
 #include "Obstacle.hpp"
 
-using XY = std::pair<double, double>;
-
 namespace ob {
 
-  auto g_phi(double, double, const Null) -> XY { return {0, 0}; }
+  auto g_phi(XY, const Null) -> XY { return {0, 0}; }
 
-  auto g_phi(double x, double y, const Point p) -> XY {
+  auto g_phi(XY p, const Point o) -> XY {
     /*
      * For a point-obstacle, the gradient vector is:
      *
@@ -20,21 +18,18 @@ namespace ob {
      *   d𝑟          ρ     2
      *             (𝑟  + ε)
      */
-    const double rx = x - p.x;
-    const double ry = y - p.y;
-    // Pnemonic: 𝑞 for quadrance, in the sense described by Canadian
-    //   mathematician Norman J. Wildberger.
-    const double q = rx * rx + ry * ry;
+    auto r = p - o.coords;
+    const double q = quadrance(r);
     // TODO: Maybe missing minus sign in numer:
-    const double numer = p.pwr * std::pow(q, p.pwr / 2 - 1);
-    const double denom = (std::pow(q, p.pwr / 2) + p.epsilon)
-                         * (std::pow(q, p.pwr / 2) + p.epsilon);
+    const double numer = o.pwr * std::pow(q, o.pwr / 2 - 1);
+    const double denom = (std::pow(q, o.pwr / 2) + o.epsilon)
+                         * (std::pow(q, o.pwr / 2) + o.epsilon);
 
-    return {rx * numer / denom, ry * numer / denom};
+    return {r.x * numer / denom, r.y * numer / denom};
   }
 
-  auto g_phi(const double x, const double y, const Obstacle o) -> XY {
-    return std::visit([x, y](auto& o) { return g_phi(x, y, o); }, o);
+  auto g_phi(const XY p, const Obstacle o) -> XY {
+    return std::visit([p](const auto& o) { return g_phi(p, o); }, o);
   }
 
 }  // namespace ob
