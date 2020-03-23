@@ -370,7 +370,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, 1, 1};
+    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {1, 1}};
     return w;
   }();
 
@@ -394,7 +394,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.xystate = {std::chrono::steady_clock::now(), 0, 8, 8, -1, -1};
+    w.robot = {std::chrono::steady_clock::now(), 0, {8, 8}, {-1, -1}};
     return w;
   }();
 
@@ -421,20 +421,25 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, 1, 1};
+    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {1, 1}};
     w.obstacles = std::vector<ob::Obstacle>{ob::Null()};
     return w;
   }();
 
   auto result = nmpc_algebra(c, w);
 
+  CHECK(result.obstacles.size() == w.obstacles.size());
   CHECK(as_vector(c.x) != as_vector(result.x));
   CHECK(as_vector(c.y) != as_vector(result.y));
   REQUIRE(as_vector(result.x) == std::vector<double>{0, 1, 2, 3, 4});
   REQUIRE(as_vector(result.y) == std::vector<double>{0, 1, 2, 3, 4});
 }
 
-TEST_CASE("", "[nmpc-algebra]") {
+TEST_CASE(
+    "With the previous test as a starting point, adding point-obstacles below "
+    "(in terms of 𝑦 coordinates) the reference trajectory should push it "
+    "upward (toward higher 𝑦-values).",
+    "[nmpc-algebra]") {
   auto c = [] {
     NMPCState<5> c;
     set_array(c.dt, {1s, 1s, 1s, 1s});
@@ -448,7 +453,7 @@ TEST_CASE("", "[nmpc-algebra]") {
   auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, 1, 1};
+    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {1, 1}};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
     return w;
@@ -458,18 +463,12 @@ TEST_CASE("", "[nmpc-algebra]") {
 
   CHECK(result.obstacles.size() == w.obstacles.size());
 
-  CHECK(as_vector(result.px) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.py) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.pDx) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.pDy) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.pth) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.grad) != std::vector<double>{0, 0, 0, 0});
+  CHECK_THAT(as_vector(result.grad), Catch::Approx<double>({0, 0, 0, 0}).margin(0.01));
 
   CHECK(as_vector(result.Dth) != std::vector<double>{0, 0, 0, 0});
   CHECK(as_vector(result.DPhiX) != std::vector<double>{0, 0, 0, 0});
   CHECK(as_vector(result.DPhiY) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.x) != std::vector<double>{0, 1, 2, 3, 4});
-  CHECK(as_vector(result.y) != std::vector<double>{0, 1, 2, 3, 4});
+  CHECK(as_vector(result.ex) != std::vector<double>{0, 0, 0, 0});
   CHECK(as_vector(result.ex) != std::vector<double>{0, 0, 0, 0});
 }
 
@@ -495,7 +494,7 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, .8, 1.5};
+    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {.8, 1.5}};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
     return w;

@@ -8,8 +8,8 @@
 
 #include <chrono>
 #include <optional>
-namespace chrono = std::chrono;
-using namespace std::chrono_literals;
+
+#include "../include/XY.hpp"
 
 /**
  * @brief
@@ -32,22 +32,19 @@ using namespace std::chrono_literals;
 
 namespace nav2 {
 
-  template <typename Clock = chrono::steady_clock>
+  template <typename Clock = std::chrono::steady_clock>
   struct Pose {
-    chrono::time_point<Clock> time;
-    double x;
-    double y;
+    std::chrono::time_point<Clock> time;
+    XY position;
     double orien;
   };
 
-  template <typename Clock = chrono::steady_clock>
+  template <typename Clock = std::chrono::steady_clock>
   struct XYState {
-    chrono::time_point<Clock> time;
-    double roboTime;
-    double x;
-    double y;
-    double vx;
-    double vy;
+    std::chrono::time_point<Clock> localTimestamp;
+    double remoteTimestamp;
+    XY position;
+    XY velocity;
   };
 
   class Remote {

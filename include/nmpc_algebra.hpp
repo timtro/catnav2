@@ -17,9 +17,9 @@
 
 template <typename Clock = std::chrono::steady_clock>
 struct WorldState {
-  std::pair<double, double> tgt = {0, 0};
+  XY tgt = {0, 0};
   double tgtTolerance = 0.1;
-  nav2::XYState<Clock> xystate;
+  nav2::XYState<Clock> robot;
   std::vector<ob::Obstacle> obstacles;
 };
 
@@ -180,13 +180,13 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> with_init_from_world(
       NMPCState<N, Clock> c, const WorldState<Clock> w) noexcept {
-    c.time = w.xystate.time;
-    c.x[0] = w.xystate.x;
-    c.y[0] = w.xystate.y;
-    c.Dx[0] = w.xystate.vx;
-    c.Dy[0] = w.xystate.vy;
-    c.th[0] = std::atan2(w.xystate.vy, w.xystate.vx);
-    c.v[0] = std::hypot(w.xystate.vx, w.xystate.vy);
+    c.time = w.robot.localTimestamp;
+    c.x[0] = w.robot.position.x;
+    c.y[0] = w.robot.position.y;
+    c.Dx[0] = w.robot.velocity.x;
+    c.Dy[0] = w.robot.velocity.y;
+    c.th[0] = std::atan2(w.robot.velocity.y, w.robot.velocity.x);
+    c.v[0] = std::hypot(w.robot.velocity.x, w.robot.velocity.y);
     return c;
   }
 
@@ -199,14 +199,10 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> plan_reference(NMPCState<N, Clock> c,
                                                const WorldState<Clock> w) {
-    auto unitx = w.tgt.first - w.xystate.x;
-    auto unity = w.tgt.second - w.xystate.y;
-    auto dist = std::hypot(unitx, unity);
-    unitx /= dist;
-    unity /= dist;
+    XY unit = normalise(w.tgt - w.robot.position);
     for (auto [k, t] = std::tuple{std::size_t{0}, c.dt[0]}; k < N - 1; ++k) {
-      c.xref[k] = w.xystate.x + c.v[k] * unitx * t.count();
-      c.yref[k] = w.xystate.y + c.v[k] * unity * t.count();
+      c.xref[k] = w.robot.position.x + c.v[k] * unit.x * t.count();
+      c.yref[k] = w.robot.position.y + c.v[k] * unit.y * t.count();
       t += c.dt[k];
     }
     c.obstacles = w.obstacles;
@@ -226,7 +222,7 @@ namespace dtl {
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
                                            const WorldState<Clock> w) {
-  const std::chrono::duration<double> deltaT = w.xystate.time - c.time;
+  const std::chrono::duration<double> deltaT = w.robot.localTimestamp - c.time;
   if (deltaT <= std::chrono::seconds{0}) return c;
 
   return dtl::sd_optimise(

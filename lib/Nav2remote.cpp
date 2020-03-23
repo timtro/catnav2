@@ -103,13 +103,13 @@ int nav2::Remote::setRelativeVelocity(double dir, double speed, double turnRate)
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-std::optional<nav2::Pose<chrono::steady_clock>>
+std::optional<nav2::Pose<std::chrono::steady_clock>>
   nav2::Remote::estimatePosition() const {
   if (write(fd, "q\n", 2) != 2) return std::nullopt;
 
   // Read the result
   if (readLine() < 0) return std::nullopt;
-  const auto now = chrono::steady_clock::now();
+  const auto now = std::chrono::steady_clock::now();
 
   double x, y, orientation;
   int qlen;
@@ -117,21 +117,21 @@ std::optional<nav2::Pose<chrono::steady_clock>>
   // Nav2 reports in degrees, but we keep rads for std::-trig functions:
   orientation *= (M_PI / 180.0);
 
-  return {{now, x, y, orientation}};
+  return {{now, {x, y}, orientation}};
 }
 
-std::optional<nav2::XYState<chrono::steady_clock>>
+std::optional<nav2::XYState<std::chrono::steady_clock>>
   nav2::Remote::estimateXYState() const {
   if (write(fd, "w\n", 2) != 2) return std::nullopt;
 
   // Read the result
   if (readLine() < 0) return std::nullopt;
-  const auto now = chrono::steady_clock::now();
+  const auto now = std::chrono::steady_clock::now();
 
-  double roboTime, x, y, vx, vy;
-  sscanf(line, "%lf %lf %lf %lf %lf", &roboTime, &x, &y, &vx, &vy);
+  double remoteTime, x, y, vx, vy;
+  sscanf(line, "%lf %lf %lf %lf %lf", &remoteTime, &x, &y, &vx, &vy);
 
-  return {{now, roboTime, x, y, vx, vy}};
+  return {{now, remoteTime, {x, y}, {vx, vy}}};
 }
 
 int nav2::Remote::setPosition(double x, double y, double orientation) {
