@@ -52,7 +52,6 @@ TEST_CASE("Should convert to a tuple of references to double for std::tie") {
 TEST_CASE(
     "Function normalise should produce expected unit-sized vectors, except "
     "when it shouldn't.") {
-
   XY badness = normalise({0, 0});
   REQUIRE((std::isnan(badness.x) && std::isnan(badness.y)));
 
@@ -63,9 +62,7 @@ TEST_CASE(
 
   REQUIRE(normalise({2, 2}) == normalise({0.1, 0.1}));
 
-  REQUIRE_THAT(as_vector(normalise({-5, 0})),
-               Catch::Approx<double>({-1, 0}));
+  REQUIRE_THAT(as_vector(normalise({-5, 0})), Catch::Approx<double>({-1, 0}));
 
-  REQUIRE_THAT(as_vector(normalise({0, 7})),
-               Catch::Approx<double>({0, 1}));
+  REQUIRE_THAT(as_vector(normalise({0, 7})), Catch::Approx<double>({0, 1}));
 }

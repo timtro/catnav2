@@ -96,7 +96,8 @@ int nav2::Remote::setAbsoluteVelocity(double vx, double vy) {
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int nav2::Remote::setRelativeVelocity(double dir, double speed, double turnRate) {
+int nav2::Remote::setRelativeVelocity(double dir, double speed,
+                                      double turnRate) {
   char msg[128];
   int p = sprintf(msg, "v %lf %lf %lf\n", dir * (180.0 / M_PI), speed,
                   turnRate * (180.0 / M_PI));
@@ -104,7 +105,7 @@ int nav2::Remote::setRelativeVelocity(double dir, double speed, double turnRate)
 }
 
 std::optional<nav2::Pose<std::chrono::steady_clock>>
-  nav2::Remote::estimatePosition() const {
+    nav2::Remote::estimatePosition() const {
   if (write(fd, "q\n", 2) != 2) return std::nullopt;
 
   // Read the result
@@ -121,7 +122,7 @@ std::optional<nav2::Pose<std::chrono::steady_clock>>
 }
 
 std::optional<nav2::XYState<std::chrono::steady_clock>>
-  nav2::Remote::estimateXYState() const {
+    nav2::Remote::estimateXYState() const {
   if (write(fd, "w\n", 2) != 2) return std::nullopt;
 
   // Read the result

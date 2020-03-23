@@ -463,7 +463,8 @@ TEST_CASE(
 
   CHECK(result.obstacles.size() == w.obstacles.size());
 
-  CHECK_THAT(as_vector(result.grad), Catch::Approx<double>({0, 0, 0, 0}).margin(0.01));
+  CHECK_THAT(as_vector(result.grad),
+             Catch::Approx<double>({0, 0, 0, 0}).margin(0.01));
 
   CHECK(as_vector(result.Dth) != std::vector<double>{0, 0, 0, 0});
   CHECK(as_vector(result.DPhiX) != std::vector<double>{0, 0, 0, 0});
