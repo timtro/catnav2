@@ -1,7 +1,6 @@
 #define CATCH_CONFIG_ENABLE_PAIR_STRINGMAKER
 
 #include <limits>
-#include <list>
 #include <vector>
 
 #include <boost/hana/functional/curry.hpp>
@@ -85,7 +84,7 @@ TEST_CASE(
     "Working in aggregates, summing over path with both Null and Point "
     "obstacles together.",
     "[ob::Null][ob::Point]") {
-  const std::list<ob::Obstacle> obs{ob::Point{0, 0, 2, 1}, ob::Null{},
+  const std::vector<ob::Obstacle> obs{ob::Point{0, 0, 2, 1}, ob::Null{},
                                     ob::Point{0, 0, 2, 1}, ob::Null{}};
 
   const XY result = foldl(ob::g_phi_accuml(1, -1), XY{0, 0}, obs);

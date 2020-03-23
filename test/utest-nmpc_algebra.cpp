@@ -1,3 +1,4 @@
+#include <cmath>
 #include <vector>
 
 #include <catch2/catch.hpp>
@@ -94,7 +95,7 @@ TEST_CASE(
       return c;
     }();
 
-    auto result = dtl::forecast(std::move(c));
+    auto result = dtl::forecast(c);
 
     REQUIRE(as_vector(result.x) == std::vector<double>{0, 0, 0, 0, 0});
     REQUIRE(as_vector(result.y) == std::vector<double>{0, 0, 0, 0, 0});
@@ -121,7 +122,7 @@ TEST_CASE(
       return c;
     }();
 
-    const auto result = dtl::forecast(std::move(c));
+    const auto result = dtl::forecast(c);
 
     REQUIRE(as_vector(result.x) == std::vector<double>{0, 1, 2, 3, 4});
     REQUIRE(as_vector(result.y) == std::vector<double>{0, 0, 0, 0, 0});
@@ -148,7 +149,7 @@ TEST_CASE(
       return c;
     }();
 
-    const auto result = dtl::forecast(std::move(c));
+    const auto result = dtl::forecast(c);
 
     REQUIRE(as_vector(result.th)
             == std::vector<double>{0, M_PI_2, M_PI, 3 * M_PI_2, 2 * M_PI});
@@ -185,7 +186,7 @@ TEST_CASE(
       return c;
     }();
 
-    const auto result = dtl::forecast(std::move(c));
+    const auto result = dtl::forecast(c);
 
     REQUIRE_THAT(as_vector(result.ex),
                  Catch::Approx<double>({2 * M_SQRT1_2, 4 * M_SQRT1_2,
@@ -326,7 +327,8 @@ TEST_CASE(
 TEST_CASE(
     "Starting in the direction to follow a straight line reference at a "
     "constant speed, but with a wonky Dth, after sd_optimisation, we should "
-    "still end up near the reference path.") {
+    "still end up near the reference path.",
+    "[dtl][sd_optimise]") {
   const auto c = [] {
     NMPCState<5> c;
     for (auto& each : c.dt) each = 1s;
@@ -352,4 +354,156 @@ TEST_CASE(
              Catch::Approx<double>({0, 1, 2, 3, 4}).margin(0.1));
   CHECK_THAT(as_vector(result.y),
              Catch::Approx<double>({0, 1, 2, 3, 4}).margin(0.1));
+}
+
+TEST_CASE(
+    "Starting at the origin with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 "
+    "and time intervals d𝑡 = 1s, we should plan a reference [(1,1), (2,2), "
+    "(3,3), (4,4)].",
+    "[dtl][plan_reference]") {
+  const auto c = [] {
+    NMPCState<5> c;
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    set_array(c.dt, {1s, 1s, 1s, 1s});
+    return c;
+  }();
+  const auto w = [] {
+    WorldState<> w;
+    w.tgt = {1, 1};
+    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, 1, 1};
+    return w;
+  }();
+
+  const auto result = dtl::plan_reference(c, w);
+
+  REQUIRE_THAT(as_vector(result.xref), Catch::Approx<double>({1, 2, 3, 4}));
+  REQUIRE_THAT(as_vector(result.yref), Catch::Approx<double>({1, 2, 3, 4}));
+}
+
+TEST_CASE(
+    "Starting at (8,8) with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 and "
+    "time intervals d𝑡 = 1s, we should plan a reference [(7,7), (6,6), (5,5), "
+    "(4,4)].",
+    "[dtl][plan_reference]") {
+  const auto c = [] {
+    NMPCState<5> c;
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    set_array(c.dt, {1s, 1s, 1s, 1s});
+    return c;
+  }();
+  const auto w = [] {
+    WorldState<> w;
+    w.tgt = {1, 1};
+    w.xystate = {std::chrono::steady_clock::now(), 0, 8, 8, -1, -1};
+    return w;
+  }();
+
+  const auto result = dtl::plan_reference(c, w);
+
+  REQUIRE_THAT(as_vector(result.xref), Catch::Approx<double>({7, 6, 5, 4}));
+  REQUIRE_THAT(as_vector(result.yref), Catch::Approx<double>({7, 6, 5, 4}));
+}
+
+TEST_CASE(
+    "Starting at the origin with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 "
+    "and time intervals d𝑡 = 1s, we should obtain an optimal path of [(1,1), "
+    "(2,2), (3,3), (4,4)].",
+    "[nmpc_algebra]") {
+  auto c = [] {
+    NMPCState<5> c;
+    set_array(c.dt, {1s, 1s, 1s, 1s});
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    c.Q0 = 0;
+    c.Q = 1;
+    c.R = 0.5;
+    return c;
+  }();
+  auto w = [] {
+    WorldState<> w;
+    w.tgt = {1, 1};
+    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, 1, 1};
+    w.obstacles = std::vector<ob::Obstacle>{ob::Null()};
+    return w;
+  }();
+
+  auto result = nmpc_algebra(c, w);
+
+  CHECK(as_vector(c.x) != as_vector(result.x));
+  CHECK(as_vector(c.y) != as_vector(result.y));
+  REQUIRE(as_vector(result.x) == std::vector<double>{0, 1, 2, 3, 4});
+  REQUIRE(as_vector(result.y) == std::vector<double>{0, 1, 2, 3, 4});
+}
+
+TEST_CASE("", "[nmpc-algebra]") {
+  auto c = [] {
+    NMPCState<5> c;
+    set_array(c.dt, {1s, 1s, 1s, 1s});
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    set_array(c.Dth, {M_PI_4, M_PI_4, M_PI_4, M_PI_4});
+    c.Q0 = 1;
+    c.Q = 1;
+    c.R = 0.5;
+    return c;
+  }();
+  auto w = [] {
+    WorldState<> w;
+    w.tgt = {1, 1};
+    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, 1, 1};
+    w.obstacles = std::vector<ob::Obstacle>{ob::Point{2.5, 0, 1, .01},
+                                            ob::Point{3.5, 1, 2, 0.01}};
+    return w;
+  }();
+
+  auto result = nmpc_algebra(c, w);
+
+  CHECK(result.obstacles.size() == w.obstacles.size());
+
+  CHECK(as_vector(result.px) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.py) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.pDx) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.pDy) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.pth) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.grad) != std::vector<double>{0, 0, 0, 0});
+
+  CHECK(as_vector(result.Dth) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.DPhiX) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.DPhiY) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.x) != std::vector<double>{0, 1, 2, 3, 4});
+  CHECK(as_vector(result.y) != std::vector<double>{0, 1, 2, 3, 4});
+  CHECK(as_vector(result.ex) != std::vector<double>{0, 0, 0, 0});
+}
+
+TEST_CASE(
+    "The optimal solution presented by the algebra should not depend on the "
+    "initial values of the turn rates. The setup from the previous example is "
+    "used as a starting point.",
+    "[nmpc-algebra]") {
+  auto c1 = [] {
+    NMPCState<5> c;
+    set_array(c.dt, {1s, 1s, 1s, 1s});
+    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    set_array(c.Dth, {0.1, 0.1, 0.1, 0.1});
+    c.Q0 = 1;
+    c.Q = 1;
+    c.R = 0.5;
+    return c;
+  }();
+  auto c2 = [c = c1]() mutable {
+    set_array(c.Dth, {M_PI_4, M_PI_4, M_PI_4, M_PI_4});
+    return c;
+  }();
+  auto w = [] {
+    WorldState<> w;
+    w.tgt = {1, 1};
+    w.xystate = {std::chrono::steady_clock::now(), 0, 0, 0, .8, 1.5};
+    w.obstacles = std::vector<ob::Obstacle>{ob::Point{2.5, 0, 1, .01},
+                                            ob::Point{3.5, 1, 2, 0.01}};
+    return w;
+  }();
+
+  auto result1 = nmpc_algebra(c1, w);
+  auto result2 = nmpc_algebra(c1, w);
+
+  CHECK(as_vector(result1.x) == as_vector(result2.x));
+  CHECK(as_vector(result1.y) == as_vector(result2.y));
 }

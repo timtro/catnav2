@@ -20,7 +20,7 @@
 
 #include "Nav2remote.hpp"
 
-Nav2Remote::Nav2Remote(const char* host, int port)
+nav2::Remote::Remote(const char* host, int port)
     : line(nullptr), lineLen(0), fd(-1) {
   if (port < 1 || port > 65535) throw std::invalid_argument("Invalid port");
 
@@ -51,12 +51,12 @@ Nav2Remote::Nav2Remote(const char* host, int port)
   freeaddrinfo(ai);
 }
 
-Nav2Remote::~Nav2Remote() {
+nav2::Remote::~Remote() {
   if (line) free(line);
   close(fd);
 }
 
-int Nav2Remote::readLine() const {
+int nav2::Remote::readLine() const {
   for (int pos = 0;; ++pos) {
     if (lineLen <= pos + 1) {
       lineLen += 32;
@@ -84,27 +84,27 @@ int Nav2Remote::readLine() const {
   }
 }
 
-int Nav2Remote::setTargetOrientation(double orientation) {
+int nav2::Remote::setTargetOrientation(double orientation) {
   char msg[128];
   int p = sprintf(msg, "o %lf\n", orientation * (180.0 / M_PI));
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::setAbsoluteVelocity(double vx, double vy) {
+int nav2::Remote::setAbsoluteVelocity(double vx, double vy) {
   char msg[128];
   int p = sprintf(msg, "av %lf %lf\n", vx, vy);
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::setRelativeVelocity(double dir, double speed, double turnRate) {
+int nav2::Remote::setRelativeVelocity(double dir, double speed, double turnRate) {
   char msg[128];
   int p = sprintf(msg, "v %lf %lf %lf\n", dir * (180.0 / M_PI), speed,
                   turnRate * (180.0 / M_PI));
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-std::optional<VMePose<chrono::steady_clock>>
-  Nav2Remote::estimatePosition() const {
+std::optional<nav2::Pose<chrono::steady_clock>>
+  nav2::Remote::estimatePosition() const {
   if (write(fd, "q\n", 2) != 2) return std::nullopt;
 
   // Read the result
@@ -120,45 +120,59 @@ std::optional<VMePose<chrono::steady_clock>>
   return {{now, x, y, orientation}};
 }
 
-int Nav2Remote::setPosition(double x, double y, double orientation) {
+std::optional<nav2::XYState<chrono::steady_clock>>
+  nav2::Remote::estimateXYState() const {
+  if (write(fd, "w\n", 2) != 2) return std::nullopt;
+
+  // Read the result
+  if (readLine() < 0) return std::nullopt;
+  const auto now = chrono::steady_clock::now();
+
+  double roboTime, x, y, vx, vy;
+  sscanf(line, "%lf %lf %lf %lf %lf", &roboTime, &x, &y, &vx, &vy);
+
+  return {{now, roboTime, x, y, vx, vy}};
+}
+
+int nav2::Remote::setPosition(double x, double y, double orientation) {
   char msg[128];
   int p = sprintf(msg, "p %lf %lf %lf\n", x, y, orientation * (180.0 / M_PI));
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::stop() { return write(fd, "s\n", 2) == 2 ? 0 : -1; }
+int nav2::Remote::stop() { return write(fd, "s\n", 2) == 2 ? 0 : -1; }
 
-int Nav2Remote::turnLeft(double angle) {
+int nav2::Remote::turnLeft(double angle) {
   char msg[128];
   int p = sprintf(msg, "lt %lf\n", angle * (180.0 / M_PI));
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::move(double dist, double direction) {
+int nav2::Remote::move(double dist, double direction) {
   char msg[128];
   int p = sprintf(msg, "mv %lf %lf\n", dist, direction * (180.0 / M_PI));
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::setMaxSpeed(double maxSpeed) {
+int nav2::Remote::setMaxSpeed(double maxSpeed) {
   char msg[128];
   int p = sprintf(msg, "sms %lf\n", maxSpeed);
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::setMaxAccel(double maxAccel) {
+int nav2::Remote::setMaxAccel(double maxAccel) {
   char msg[128];
   int p = sprintf(msg, "sma %lf\n", maxAccel);
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::setMaxCorneringError(double maxCorneringError) {
+int nav2::Remote::setMaxCorneringError(double maxCorneringError) {
   char msg[128];
   int p = sprintf(msg, "smce %lf\n", maxCorneringError);
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-double Nav2Remote::getMaxSpeed() const {
+double nav2::Remote::getMaxSpeed() const {
   if (write(fd, "qms\n", 4) != 4) return -1;
 
   // Read the result
@@ -170,7 +184,7 @@ double Nav2Remote::getMaxSpeed() const {
   return result;
 }
 
-double Nav2Remote::getMaxAccel() const {
+double nav2::Remote::getMaxAccel() const {
   if (write(fd, "qma\n", 4) != 4) return -1;
 
   // Read the result
@@ -182,7 +196,7 @@ double Nav2Remote::getMaxAccel() const {
   return result;
 }
 
-double Nav2Remote::getMaxCorneringError() const {
+double nav2::Remote::getMaxCorneringError() const {
   if (write(fd, "qmce\n", 5) != 5) return -1;
 
   // Read the result
@@ -194,7 +208,7 @@ double Nav2Remote::getMaxCorneringError() const {
   return result;
 }
 
-int Nav2Remote::getQueueSize() const {
+int nav2::Remote::getQueueSize() const {
   if (write(fd, "q\n", 2) != 2) return -1;
 
   // Read the result
@@ -207,13 +221,13 @@ int Nav2Remote::getQueueSize() const {
   return qlen;
 }
 
-int Nav2Remote::setHeadTilt(double angle) {
+int nav2::Remote::setHeadTilt(double angle) {
   char msg[128];
   int p = sprintf(msg, "tilt %lf\n", angle * (180.0 / M_PI));
   return write(fd, msg, p) == p ? 0 : -1;
 }
 
-int Nav2Remote::getHeadTilt(double& angle) const {
+int nav2::Remote::getHeadTilt(double& angle) const {
   if (write(fd, "qtilt\n", 6) != 6) return -1;
 
   // Read the result
@@ -225,7 +239,7 @@ int Nav2Remote::getHeadTilt(double& angle) const {
   return 0;
 }
 
-int Nav2Remote::wait() const {
+int nav2::Remote::wait() const {
   while (1) {
     int rc = getQueueSize();
     if (rc < 1) return rc;
@@ -233,7 +247,7 @@ int Nav2Remote::wait() const {
   }
 }
 
-double Nav2Remote::eval(const char* expr, double* variance) {
+double nav2::Remote::eval(const char* expr, double* variance) {
   std::string s = ":";
   s += expr;
   s += '\n';

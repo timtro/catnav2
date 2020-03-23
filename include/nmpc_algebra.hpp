@@ -15,6 +15,14 @@
 #include "../lib/Nav2remote.hpp"
 #include "../lib/Obstacle.hpp"
 
+template <typename Clock = std::chrono::steady_clock>
+struct WorldState {
+  std::pair<double, double> tgt = {0, 0};
+  double tgtTolerance = 0.1;
+  nav2::XYState<Clock> xystate;
+  std::vector<ob::Obstacle> obstacles;
+};
+
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 struct NMPCState {
   std::chrono::time_point<Clock> time;
@@ -51,8 +59,8 @@ struct NMPCState {
   double R = 0,  // Control effort penalty
       Q = 0,     // Tracking error penalty
       Q0 = 0;    // Terminal error penalty
-  // List of obstacles used to compute (DPhiX, DPhiY).
-  std::list<ob::Obstacle> obstacles;
+  // Collection of obstacles used to compute (DPhiX, DPhiY).
+  std::vector<ob::Obstacle> obstacles;
 };
 
 namespace dtl {
@@ -81,21 +89,21 @@ namespace dtl {
   //   2. compute tracking errors, and
   //   3. compute the gradient of the obstacle potential.
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
-  constexpr NMPCState<N, Clock> forecast(NMPCState<N, Clock> s) noexcept {
+  constexpr NMPCState<N, Clock> forecast(NMPCState<N, Clock> c) noexcept {
     for (std::size_t k = 1; k < N; ++k) {
-      s.th[k] = fma(s.Dth[k - 1], s.dt[k - 1].count(), s.th[k - 1]);
-      s.x[k] = fma(s.Dx[k - 1], s.dt[k - 1].count(), s.x[k - 1]);
-      s.Dx[k] = s.v[k - 1] * std::cos(s.th[k]);
-      s.y[k] = fma(s.Dy[k - 1], s.dt[k - 1].count(), s.y[k - 1]);
-      s.Dy[k] = s.v[k - 1] * std::sin(s.th[k]);
+      c.th[k] = fma(c.Dth[k - 1], c.dt[k - 1].count(), c.th[k - 1]);
+      c.x[k] = fma(c.Dx[k - 1], c.dt[k - 1].count(), c.x[k - 1]);
+      c.Dx[k] = c.v[k - 1] * std::cos(c.th[k]);
+      c.y[k] = fma(c.Dy[k - 1], c.dt[k - 1].count(), c.y[k - 1]);
+      c.Dy[k] = c.v[k - 1] * std::sin(c.th[k]);
 
-      s.ex[k - 1] = s.x[k] - s.xref[k - 1];
-      s.ey[k - 1] = s.y[k] - s.yref[k - 1];
+      c.ex[k - 1] = c.x[k] - c.xref[k - 1];
+      c.ey[k - 1] = c.y[k] - c.yref[k - 1];
 
-      std::tie(s.DPhiX[k - 1], s.DPhiY[k - 1]) = foldl(
-          ob::g_phi_accuml(s.x[k], s.y[k]), std::pair{0., 0.}, s.obstacles);
+      std::tie(c.DPhiX[k - 1], c.DPhiY[k - 1]) = foldl(
+          ob::g_phi_accuml(c.x[k], c.y[k]), std::pair{0., 0.}, c.obstacles);
     }
-    return s;
+    return c;
   }
 
   // lagrange_gradient : NMPCState → NMPCState
@@ -104,31 +112,30 @@ namespace dtl {
   // multipliers are populated.
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> lagrange_gradient(
-      NMPCState<N, Clock> s) noexcept {
-    s.prvGradNorm = s.curGradNorm;
-    s.curGradNorm = 0;
-    s.px[N - 2] = s.Q0 * s.ex[N - 2];
-    s.py[N - 2] = s.Q0 * s.ey[N - 2];
-    s.pDx[N - 2] = 0;
-    s.pDy[N - 2] = 0;
-    s.pth[N - 2] = 0;
-    s.grad[N - 2] = 0;
+      NMPCState<N, Clock> c) noexcept {
+    c.prvGradNorm = c.curGradNorm;
+    c.px[N - 2] = c.Q0 * c.ex[N - 2];
+    c.py[N - 2] = c.Q0 * c.ey[N - 2];
+    c.pDx[N - 2] = 0;
+    c.pDy[N - 2] = 0;
+    c.pth[N - 2] = 0;
+    c.grad[N - 2] = c.pth[N - 2] * c.dt[N - 2].count() + c.Dth[N - 2] * c.R;
+    c.curGradNorm = c.grad[N - 2] * c.grad[N - 2];
     // Get the gradient ∂ℋ/∂uₖ, for each step, k in the horizon, loop
     // through each k in N. This involves computing the obstacle potential
-    // and Lagrange multipliers.
+    // and Lagrange multiplierc.
     for (int k = N - 3; k >= 0; --k) {
-      s.px[k] = s.Q * s.ex[k] + s.DPhiX[k] + s.px[k + 1];
-      s.pDx[k] = s.px[k + 1] * s.dt[k].count();
-      s.py[k] = s.Q * s.ey[k] + s.DPhiY[k] + s.py[k + 1];
-      s.pDy[k] = s.py[k + 1] * s.dt[k].count();
-      s.pth[k] = s.pth[k + 1] + s.pDy[k + 1] * s.v[k] * std::cos(s.th[k])
-                 - s.pDx[k + 1] * s.v[k] * std::sin(s.th[k]);
-      s.grad[k] = s.R * s.Dth[k] + s.pth[k + 1] * s.dt[k].count();
-      s.curGradNorm += s.grad[k] * s.grad[k];
+      c.px[k] = c.Q * c.ex[k] + c.DPhiX[k] + c.px[k + 1];
+      c.pDx[k] = c.px[k + 1] * c.dt[k].count();
+      c.py[k] = c.Q * c.ey[k] + c.DPhiY[k] + c.py[k + 1];
+      c.pDy[k] = c.py[k + 1] * c.dt[k].count();
+      c.pth[k] = c.pth[k + 1] + c.pDy[k + 1] * c.v[k] * std::cos(c.th[k])
+                 - c.pDx[k + 1] * c.v[k] * std::sin(c.th[k]);
+      c.grad[k] = c.R * c.Dth[k] + c.pth[k + 1] * c.dt[k].count();
+      c.curGradNorm += c.grad[k] * c.grad[k];
     }
-    s.curGradNorm = sqrt(s.curGradNorm);
-
-    return s;
+    c.curGradNorm = sqrt(c.curGradNorm);
+    return c;
   }
 
   // descend :: NMPCState → NMPCState
@@ -148,7 +155,7 @@ namespace dtl {
   // A steepest/gradient descent algorithm that iteratively refines the control
   // plan to minimize the cost functional.
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
-  constexpr NMPCState<N, Clock> sd_optimise(NMPCState<N, Clock> s) noexcept {
+  constexpr NMPCState<N, Clock> sd_optimise(NMPCState<N, Clock> c) noexcept {
     //
     // step : NMPCState → NMPCState
     //
@@ -164,11 +171,24 @@ namespace dtl {
       };
     };
 
-    return iterate_while(step, gradNorm_outside(0.01), s);
+    return iterate_while(step, gradNorm_outside(0.01), c);
   }
 
-  // initialize : NMPCState × ( ⋯ ) → NMPCState
+  // setup : NMPCState × ( ⋯ ) → NMPCState
   // (x₀, y₀, th₀, Dx₀, Dy₀, Dth₀), default to 0
+  //
+  template <std::size_t N, typename Clock = std::chrono::steady_clock>
+  constexpr NMPCState<N, Clock> with_init_from_world(
+      NMPCState<N, Clock> c, const WorldState<Clock> w) noexcept {
+    c.time = w.xystate.time;
+    c.x[0] = w.xystate.x;
+    c.y[0] = w.xystate.y;
+    c.Dx[0] = w.xystate.vx;
+    c.Dy[0] = w.xystate.vy;
+    c.th[0] = std::atan2(w.xystate.vy, w.xystate.vx);
+    c.v[0] = std::hypot(w.xystate.vx, w.xystate.vy);
+    return c;
+  }
 
   // plan_reference : NMPCState × (double × double) → NMPCState
   //
@@ -176,6 +196,22 @@ namespace dtl {
   // straight line from the current position (x₀, y₀) to the target with point
   // separations determined by dtₖ [and 𝑣ₖ, or should I set these as part of the
   // plan?].
+  template <std::size_t N, typename Clock = std::chrono::steady_clock>
+  constexpr NMPCState<N, Clock> plan_reference(NMPCState<N, Clock> c,
+                                               const WorldState<Clock> w) {
+    auto unitx = w.tgt.first - w.xystate.x;
+    auto unity = w.tgt.second - w.xystate.y;
+    auto dist = std::hypot(unitx, unity);
+    unitx /= dist;
+    unity /= dist;
+    for (auto [k, t] = std::tuple{std::size_t{0}, c.dt[0]}; k < N - 1; ++k) {
+      c.xref[k] = w.xystate.x + c.v[k] * unitx * t.count();
+      c.yref[k] = w.xystate.y + c.v[k] * unity * t.count();
+      t += c.dt[k];
+    }
+    c.obstacles = w.obstacles;
+    return c;
+  }
 
 }  // namespace dtl
 
@@ -187,13 +223,12 @@ namespace dtl {
 //
 // nmpc_algebra : NMPCState × PlantSignal → NMPCState
 //
-// template <std::size_t N, typename Clock = std::chrono::steady_clock>
-// constexpr auto nmpc_algebra() {
-//   return [](NMPCState<N, Clock>&& ctrlState,
-//             PlantSignal<Clock> pSigl) -> NMPCState<N, Clock> {
-//     const std::chrono::duration<double> deltaT = pSigl.time - ctrlState.time;
-//     if (deltaT <= std::chrono::seconds{0}) return ctrlState;
+template <std::size_t N, typename Clock = std::chrono::steady_clock>
+constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
+                                           const WorldState<Clock> w) {
+  const std::chrono::duration<double> deltaT = w.xystate.time - c.time;
+  if (deltaT <= std::chrono::seconds{0}) return c;
 
-//     return ctrlState;
-//   };
-// }
+  return dtl::sd_optimise(
+      dtl::plan_reference(dtl::with_init_from_world(c, w), w));
+}
