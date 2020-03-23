@@ -11,6 +11,8 @@ std::ostream& operator<<(std::ostream& os, XY const& p) {
   return os;
 }
 
+std::vector<double> as_vector(XY p) { return std::vector{p.x, p.y}; }
+
 TEST_CASE("Test points for non/equality.") {
   XY p1{0, 0}, p2{0, 0};
   REQUIRE(p1 == p2);
@@ -45,4 +47,25 @@ TEST_CASE("Should convert to a tuple of references to double for std::tie") {
   std::tie(x, y) = XY{-5, 10};
   REQUIRE(x == -5);
   REQUIRE(y == 10);
+}
+
+TEST_CASE(
+    "Function normalise should produce expected unit-sized vectors, except "
+    "when it shouldn't.") {
+
+  XY badness = normalise({0, 0});
+  REQUIRE((std::isnan(badness.x) && std::isnan(badness.y)));
+
+  REQUIRE_THAT(as_vector(normalise({2, 2})),
+               Catch::Approx<double>({M_SQRT1_2, M_SQRT1_2}));
+  REQUIRE_THAT(as_vector(normalise({0.1, 0.1})),
+               Catch::Approx<double>({M_SQRT1_2, M_SQRT1_2}));
+
+  REQUIRE(normalise({2, 2}) == normalise({0.1, 0.1}));
+
+  REQUIRE_THAT(as_vector(normalise({-5, 0})),
+               Catch::Approx<double>({-1, 0}));
+
+  REQUIRE_THAT(as_vector(normalise({0, 7})),
+               Catch::Approx<double>({0, 1}));
 }
