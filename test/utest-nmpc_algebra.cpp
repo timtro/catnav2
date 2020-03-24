@@ -112,11 +112,11 @@ TEST_CASE(
       "robot should follow along the 𝑥-axis.") {
     const auto c = [base] {
       auto c = base;
-      c.Dx[0] = 1.f;
-      c.Dy[0] = 0.f;
-      for (auto& each : c.v) each = 1.f;
-      for (auto& each : c.Dth) each = 0.f;
-      for (auto& each : c.th) each = 0.f;
+      c.Dx[0] = 1;
+      c.Dy[0] = 0;
+      for (auto& each : c.v) each = 1;
+      for (auto& each : c.Dth) each = 0;
+      for (auto& each : c.th) each = 0;
       set_array(c.xref, {1, 2, 3, 4});
       set_array(c.yref, {0, 0, 0, 0});
       return c;
@@ -139,11 +139,11 @@ TEST_CASE(
       "this should drive the unit-box with no tracking error.") {
     const auto c = [base] {
       auto c = base;
-      c.Dx[0] = 1.f;
-      c.Dy[0] = 0.f;
-      for (auto& each : c.v) each = 1.f;
-      for (auto& each : c.Dth) each = M_PI_2l;
-      for (auto& each : c.th) each = 0.f;
+      c.Dx[0] = 1;
+      c.Dy[0] = 0;
+      for (auto& each : c.v) each = 1;
+      for (auto& each : c.Dth) each = M_PI_2;
+      for (auto& each : c.th) each = 0;
       set_array(c.xref, {1, 1, 0, 0});
       set_array(c.yref, {0, 1, 1, 0});
       return c;
@@ -176,7 +176,7 @@ TEST_CASE(
       auto c = base;
       c.Dx[0] = M_SQRT1_2;
       c.Dy[0] = M_SQRT1_2;
-      for (auto& each : c.v) each = 1.f;
+      for (auto& each : c.v) each = 1;
       for (auto& each : c.Dth) each = 0;
       for (auto& each : c.th) each = M_PI_4;
       set_array(c.xref,

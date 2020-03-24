@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.0)
 
 
 set(CMAKE_C_COMPILER /usr/bin/clang-8)
@@ -11,7 +11,27 @@ project(catnav2)
 # set (CMAKE_CXX_STANDARD 17)
 set(common "-fno-omit-frame-pointer -pg -std=c++17")
 set(profiling "-fno-omit-frame-pointer -pg")
-set(warnings "-Wall -Wextra -Werror -pedantic")
+set(warnings "-Wall \
+  -Wextra \
+  -Wshadow \
+  -Wnon-virtual-dtor \
+  -Wold-style-cast \
+  -Wpedantic \
+  -Wcast-align \
+  -Wunused \
+  -Woverloaded-virtual \
+  -Wconversion \
+  -Wsign-conversion \
+  -Wnull-dereference \
+  -Wdouble-promotion \
+  -Wformat=2")
+# For later:
+# -Werror
+# -Wduplicated-cond \
+# -Wduplicated-branches \
+# -Wlogical-op \
+# -Wuseless-cast \
+# -Wlifetime -> coming in later version of clang.
 set(optimizations_debug "-O2")
 set(optimizations_release "-O3 -flto -ffast-math")
 set(debug "-g")
