@@ -1,15 +1,9 @@
 #pragma once
 
-#include <array>
 #include <chrono>
 #include <cmath>
-#include <cstddef>
 #include <functional>
-#include <list>
-#include <variant>
-
-#include <boost/hana/functional/compose.hpp>
-#include <boost/hana/functional/curry.hpp>
+#include <type_traits>
 
 #include "../include/list-fmap.hpp"
 #include "../lib/Nav2remote.hpp"
@@ -74,7 +68,7 @@ namespace dtl {
   template <typename F, typename P, typename I>
   constexpr auto iterate_while(F f, P p, I i) noexcept {
     static_assert(std::is_nothrow_invocable_r_v<I, F, I>);
-    static_assert(std::is_nothrow_invocable_r_v<bool, P, I>);
+    static_assert(std::is_nothrow_invocable_r_v<bool, P, I&>);
     do {
       i = std::invoke(f, i);
     } while (std::invoke(p, i));
@@ -166,7 +160,7 @@ namespace dtl {
     // gradNorm_outside : double → NMPCState → bool
     //
     constexpr auto gradNorm_outside = [](double epsilon) {
-      return [epsilon](auto c) noexcept {
+      return [epsilon](auto& c) noexcept {
         return (c.curGradNorm >= epsilon) ? true : false;
       };
     };

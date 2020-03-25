@@ -73,12 +73,6 @@ TEST_CASE(
   const NMPCState<5> base = [] {
     NMPCState<5> base;
     for (auto& each : base.dt) each = 1s;
-    base.x[0] = 0;
-    base.y[0] = 0;
-    base.th[0] = 0;
-    base.Dx[0] = 0;
-    base.Dy[0] = 0;
-    base.Dth[0] = 0;
     return base;
   }();
 
@@ -88,6 +82,7 @@ TEST_CASE(
       "there should be 0 tracking error.") {
     const auto c = [base] {
       auto c = base;
+      // These should be zero anyway, but let's emphasize it:
       for (auto& each : c.v) each = 0;
       for (auto& each : c.Dth) each = 0;
       for (auto& each : c.xref) each = 0;
