@@ -180,7 +180,6 @@ namespace dtl {
     c.Dx[0] = w.robot.velocity.x;
     c.Dy[0] = w.robot.velocity.y;
     c.th[0] = std::atan2(w.robot.velocity.y, w.robot.velocity.x);
-    c.v[0] = std::hypot(w.robot.velocity.x, w.robot.velocity.y);
     return c;
   }
 
