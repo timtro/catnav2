@@ -5,6 +5,13 @@
  * All Rights Reserved.
  */
 
+#include "Nav2remote.hpp"
+
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -12,13 +19,6 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
-
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-#include "Nav2remote.hpp"
 
 nav2::Remote::Remote(const char* host, int port)
     : line(nullptr), lineLen(0), fd(-1) {
@@ -60,7 +60,8 @@ int nav2::Remote::readLine() const {
   for (int pos = 0;; ++pos) {
     if (lineLen <= pos + 1) {
       lineLen += 32;
-      line = (char*) realloc(line, lineLen);
+      line =
+          static_cast<char*>(realloc(line, static_cast<std::size_t>(lineLen)));
       if (!line) throw std::bad_alloc();
     }
     if (read(fd, &line[pos], 1) <= 0) return -1;
@@ -87,13 +88,13 @@ int nav2::Remote::readLine() const {
 int nav2::Remote::setTargetOrientation(double orientation) {
   char msg[128];
   int p = sprintf(msg, "o %lf\n", orientation * (180.0 / M_PI));
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::setAbsoluteVelocity(double vx, double vy) {
   char msg[128];
   int p = sprintf(msg, "av %lf %lf\n", vx, vy);
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::setRelativeVelocity(double dir, double speed,
@@ -101,7 +102,7 @@ int nav2::Remote::setRelativeVelocity(double dir, double speed,
   char msg[128];
   int p = sprintf(msg, "v %lf %lf %lf\n", dir * (180.0 / M_PI), speed,
                   turnRate * (180.0 / M_PI));
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 std::optional<nav2::Pose<std::chrono::steady_clock>>
@@ -138,7 +139,7 @@ std::optional<nav2::XYState<std::chrono::steady_clock>>
 int nav2::Remote::setPosition(double x, double y, double orientation) {
   char msg[128];
   int p = sprintf(msg, "p %lf %lf %lf\n", x, y, orientation * (180.0 / M_PI));
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::stop() { return write(fd, "s\n", 2) == 2 ? 0 : -1; }
@@ -146,31 +147,31 @@ int nav2::Remote::stop() { return write(fd, "s\n", 2) == 2 ? 0 : -1; }
 int nav2::Remote::turnLeft(double angle) {
   char msg[128];
   int p = sprintf(msg, "lt %lf\n", angle * (180.0 / M_PI));
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::move(double dist, double direction) {
   char msg[128];
   int p = sprintf(msg, "mv %lf %lf\n", dist, direction * (180.0 / M_PI));
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::setMaxSpeed(double maxSpeed) {
   char msg[128];
   int p = sprintf(msg, "sms %lf\n", maxSpeed);
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::setMaxAccel(double maxAccel) {
   char msg[128];
   int p = sprintf(msg, "sma %lf\n", maxAccel);
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::setMaxCorneringError(double maxCorneringError) {
   char msg[128];
   int p = sprintf(msg, "smce %lf\n", maxCorneringError);
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 double nav2::Remote::getMaxSpeed() const {
@@ -225,7 +226,7 @@ int nav2::Remote::getQueueSize() const {
 int nav2::Remote::setHeadTilt(double angle) {
   char msg[128];
   int p = sprintf(msg, "tilt %lf\n", angle * (180.0 / M_PI));
-  return write(fd, msg, p) == p ? 0 : -1;
+  return write(fd, msg, static_cast<std::size_t>(p)) == p ? 0 : -1;
 }
 
 int nav2::Remote::getHeadTilt(double& angle) const {
@@ -252,7 +253,7 @@ double nav2::Remote::eval(const char* expr, double* variance) {
   std::string s = ":";
   s += expr;
   s += '\n';
-  if (write(fd, s.c_str(), s.size()) != (int) s.size())
+  if (write(fd, s.c_str(), s.size()) != static_cast<int>(s.size()))
     throw std::runtime_error("Problem sending expression");
 
   // Read the result
