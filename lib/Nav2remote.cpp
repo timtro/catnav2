@@ -20,6 +20,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "boost/hana/functional/overload.hpp"
+
 nav2::Remote::Remote(const char* host, int port)
     : line(nullptr), lineLen(0), fd(-1) {
   if (port < 1 || port > 65535) throw std::invalid_argument("Invalid port");
@@ -265,4 +267,15 @@ double nav2::Remote::eval(const char* expr, double* variance) {
   sscanf(line + 2, "%lf,%lf", &u, &v);
   if (variance) *variance = v;
   return u;
+}
+
+int nav2::Remote::execute(const nav2::Action a) {
+  auto action_visitor = boost::hana::overload(
+      [](const nav2::actions::Null) { return 0; },
+      [this](const nav2::actions::Stop) { return this->stop(); },
+      [this](const nav2::actions::SetRelativeVelocity a) {
+        std::printf("Setting relative v: %f, %f, %f\n", a.dir, a.speed, a.turnRate);
+        return this->setRelativeVelocity(a.dir, a.speed, a.turnRate);
+      });
+  return std::visit(action_visitor, a);
 }

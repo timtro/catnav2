@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <optional>
+#include <variant>
 
 #include "../include/XY.hpp"
 
@@ -46,6 +47,19 @@ namespace nav2 {
     XY position;
     XY velocity;
   };
+
+  namespace actions {
+    struct Null {};
+    struct Stop {};
+    struct SetRelativeVelocity {
+      double dir = 0;
+      double speed = 0;
+      double turnRate = 0;
+    };
+  }  // namespace actions
+
+  using Action =
+      std::variant<actions::Null, actions::Stop, actions::SetRelativeVelocity>;
 
   class Remote {
     // No copying allowed
@@ -325,6 +339,15 @@ namespace nav2 {
      * if needed.
      */
     double eval(const char* expr, double* variance = 0);
+
+    /**
+     * @brief Execute a nav2::Action.
+     *
+     * @param expr The expression to evaluate
+     * @return Integer returned by corresponding method call: 0 on success, or
+     *   -1 on IO error.
+     */
+    int execute(Action);
   };
 
 }  // namespace nav2
