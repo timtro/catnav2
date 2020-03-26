@@ -69,7 +69,7 @@ endif()
 enable_testing()
 add_subdirectory(lib)
 add_subdirectory(test)
-# add_subdirectory(src)
+add_subdirectory(src)
 
 if( EXISTS "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json" )
   execute_process( COMMAND ${CMAKE_COMMAND} -E copy_if_different
