@@ -23,11 +23,10 @@ struct WorldInterface {
   WorldInterface(std::string addr, int port) : remoteNav2(addr.c_str(), port) {}
 
   void try_push_next_worldState() const {
-    auto maybeXYState = remoteNav2.estimateXYState();
-    if (maybeXYState) {
+    auto mPose = remoteNav2.estimatePosition();
+    if (mPose) {
       worldStates.get_subscriber().on_next(
-          PState{{5, 5}, 0.1, *maybeXYState, {}});
-      std::printf("Pusing word state: %lf\n", maybeXYState->remoteTimestamp);
+          PState{{5, 5}, 0.1, *mPose, {}});
     }
   }
 
@@ -85,7 +84,7 @@ int main() {
                              .scan(c0, nmpc_algebra<10>);  //   This is C
 
   sControls.subscribe(
-      [&worldIface](CState u) { worldIface.controlled_step(u); });
+      [&worldIface](CState c) { worldIface.controlled_step(c); });
 
   worldIface.remoteNav2.setPosition(0, 0, 0);
   worldIface.try_push_next_worldState();

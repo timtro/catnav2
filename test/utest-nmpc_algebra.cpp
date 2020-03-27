@@ -1,7 +1,6 @@
+#include <catch2/catch.hpp>
 #include <cmath>
 #include <vector>
-
-#include <catch2/catch.hpp>
 
 #include "../include/nmpc_algebra.hpp"
 
@@ -365,7 +364,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {1, 1}};
+    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     return w;
   }();
 
@@ -389,7 +388,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.robot = {std::chrono::steady_clock::now(), 0, {8, 8}, {-1, -1}};
+    w.robot = {std::chrono::steady_clock::now(), {8, 8}, -3 * M_PI_4};
     return w;
   }();
 
@@ -416,7 +415,7 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {1, 1}};
+    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     w.obstacles = std::vector<ob::Obstacle>{ob::Null()};
     return w;
   }();
@@ -426,8 +425,8 @@ TEST_CASE(
   CHECK(result.obstacles.size() == w.obstacles.size());
   CHECK(as_vector(c.x) != as_vector(result.x));
   CHECK(as_vector(c.y) != as_vector(result.y));
-  REQUIRE(as_vector(result.x) == std::vector<double>{0, 1, 2, 3, 4});
-  REQUIRE(as_vector(result.y) == std::vector<double>{0, 1, 2, 3, 4});
+  REQUIRE_THAT(as_vector(result.x), Catch::Approx<double>({0, 1, 2, 3, 4}));
+  REQUIRE_THAT(as_vector(result.y), Catch::Approx<double>({0, 1, 2, 3, 4}));
 }
 
 TEST_CASE(
@@ -448,7 +447,7 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {1, 1}};
+    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
     return w;
@@ -490,7 +489,7 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.tgt = {1, 1};
-    w.robot = {std::chrono::steady_clock::now(), 0, {0, 0}, {.8, 1.5}};
+    w.robot = {std::chrono::steady_clock::now(), {0, 0}, 0};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
     return w;

@@ -13,7 +13,7 @@ template <typename Clock = std::chrono::steady_clock>
 struct WorldState {
   XY tgt = {0, 0};
   double tgtTolerance = 0.1;
-  nav2::XYState<Clock> robot;
+  nav2::Pose<Clock> robot;
   std::vector<ob::Obstacle> obstacles;
 };
 
@@ -168,18 +168,21 @@ namespace dtl {
     return iterate_while(step, gradNorm_outside(0.01), c);
   }
 
-  // setup : NMPCState × ( ⋯ ) → NMPCState
+  // setup : NMPCState × WorldState → NMPCState
   // (x₀, y₀, th₀, Dx₀, Dy₀, Dth₀), default to 0
   //
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> with_init_from_world(
       NMPCState<N, Clock> c, const WorldState<Clock> w) noexcept {
-    c.time = w.robot.localTimestamp;
+    c.time = w.robot.time;
     c.x[0] = w.robot.position.x;
     c.y[0] = w.robot.position.y;
-    c.Dx[0] = w.robot.velocity.x;
-    c.Dy[0] = w.robot.velocity.y;
-    c.th[0] = std::atan2(w.robot.velocity.y, w.robot.velocity.x);
+    c.th[0] = w.robot.orien;
+    c.Dx[0] = c.v[0] * std::cos(c.th[0]);
+    c.Dy[0] = c.v[0] * std::sin(c.th[0]);
+    // TODO: This is from vme-nmpc, but has a bug. v is an N-1 size vector,
+    // so v[0] doesn't mean the speed at (x[0],y[0]). I need to coordinate
+    // with changes to telep-base to get the real Dx and Dy.
     return c;
   }
 
@@ -215,7 +218,7 @@ namespace dtl {
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
                                            const WorldState<Clock> w) {
-  const std::chrono::duration<double> deltaT = w.robot.localTimestamp - c.time;
+  const std::chrono::duration<double> deltaT = w.robot.time - c.time;
   if (deltaT <= std::chrono::seconds{0}) return c;
 
   return dtl::sd_optimise(

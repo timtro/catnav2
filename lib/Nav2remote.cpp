@@ -274,7 +274,6 @@ int nav2::Remote::execute(const nav2::Action a) {
       [](const nav2::actions::Null) { return 0; },
       [this](const nav2::actions::Stop) { return this->stop(); },
       [this](const nav2::actions::SetRelativeVelocity a) {
-        std::printf("Setting relative v: %f, %f, %f\n", a.dir, a.speed, a.turnRate);
         return this->setRelativeVelocity(a.dir, a.speed, a.turnRate);
       });
   return std::visit(action_visitor, a);
