@@ -10,23 +10,29 @@
 using namespace std::string_literals;
 using namespace std::chrono_literals;
 
-using CState = NMPCState<10, std::chrono::steady_clock>;
+constexpr std::size_t N = 15;
+
+using CState = NMPCState<N, std::chrono::steady_clock>;
 using PState = WorldState<std::chrono::steady_clock>;
+
 
 struct WorldInterface {
   const std::chrono::time_point<std::chrono::steady_clock> timeAtStartup =
       std::chrono::steady_clock::now();
   nav2::Remote remoteNav2;
   const rxcpp::subjects::subject<PState> worldStates;
+  PState curWorld;
 
-  WorldInterface(std::string addr) : remoteNav2(addr.c_str()) {}
-  WorldInterface(std::string addr, int port) : remoteNav2(addr.c_str(), port) {}
+  WorldInterface(std::string addr, PState w0)
+      : remoteNav2(addr.c_str()), curWorld{w0} {}
+  WorldInterface(std::string addr, int port, PState w0)
+      : remoteNav2(addr.c_str(), port), curWorld{w0} {}
 
   void try_push_next_worldState() const {
     auto mPose = remoteNav2.estimatePosition();
     if (mPose) {
-      worldStates.get_subscriber().on_next(
-          PState{{5, 5}, 0.1, *mPose, {}});
+      worldStates.get_subscriber().on_next(PState{
+          curWorld.tgt, curWorld.tgtTolerance, *mPose, curWorld.obstacles});
     }
   }
 
@@ -39,24 +45,25 @@ struct WorldInterface {
 };
 
 int main() {
-  CState c0 = []() {
+  const CState c0 = []() {
     CState c;
     for (auto& each : c.v) each = 1.0;
-    for (auto& each : c.dt) each = 0.333s;
+    for (auto& each : c.dt) each = 1.s / 5.;
     for (auto& each : c.Dth) each = 0.5;
     c.Q0 = 1;
     c.Q = 1;
-    c.R = 0.5;
+    c.R = 0.33;
     return c;
   }();
 
-  PState x0 = []() {
-    PState x;
-    x.tgt = {5, 5};
-    return x;
+  const PState w0 = []() {
+    PState w;
+    w.tgt = {5, 5};
+    w.obstacles = {ob::Point{{2.5,2.5}, 2, 0.15}};
+    return w;
   }();
 
-  WorldInterface worldIface("localhost");
+  WorldInterface worldIface("localhost", w0);
 
   // std::vector<PState> plantStateRecord;
   // worldIface.get_world_observable().subscribe(
@@ -81,7 +88,7 @@ int main() {
   const auto sControls = worldIface
                              .get_world_observable()  // worldIface == ◼.
                              .observe_on(rxcpp::identity_current_thread())
-                             .scan(c0, nmpc_algebra<10>);  //   This is C
+                             .scan(c0, nmpc_algebra<N>);  //   This is C
 
   sControls.subscribe(
       [&worldIface](CState c) { worldIface.controlled_step(c); });

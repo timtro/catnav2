@@ -165,7 +165,10 @@ namespace dtl {
       };
     };
 
-    return iterate_while(step, gradNorm_outside(0.01), c);
+    const double tol =
+        ((c.R + c.Q) * (N - 1) + c.Q0) / N / c.dt[0].count() / 100;
+
+    return iterate_while(step, gradNorm_outside(tol), c);
   }
 
   // setup : NMPCState × WorldState → NMPCState

@@ -241,9 +241,9 @@ TEST_CASE(
              Catch::Approx<double>({M_PI_4, M_PI_4, -M_PI_2, -M_PI_2, -M_PI_2})
                  .margin(1e-25));
   REQUIRE_THAT(as_vector(result.DPhiX),
-               Catch::Approx<double>({0, 4. / 9, 1, 4. / 9}).margin(1e-25));
+               Catch::Approx<double>({0, -4. / 9, -1, -4. / 9}).margin(1e-25));
   REQUIRE_THAT(as_vector(result.DPhiY),
-               Catch::Approx<double>({0, 4. / 9, 0, -4. / 9}).margin(1e-25));
+               Catch::Approx<double>({0, -4. / 9, 0, 4. / 9}).margin(1e-25));
 }
 
 TEST_CASE(
