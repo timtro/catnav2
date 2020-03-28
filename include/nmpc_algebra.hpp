@@ -20,7 +20,7 @@ struct WorldState {
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 struct NMPCState {
   std::chrono::time_point<Clock> time;
-  std::chrono::duration<double> dt[N - 1];
+  std::chrono::duration<double> dt = std::chrono::duration<double>(1./3);
   // State Vector:
   double x[N] = {{0}};
   double y[N] = {{0}};
@@ -85,10 +85,10 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> forecast(NMPCState<N, Clock> c) noexcept {
     for (std::size_t k = 1; k < N; ++k) {
-      c.th[k] = fma(c.Dth[k - 1], c.dt[k - 1].count(), c.th[k - 1]);
-      c.x[k] = fma(c.Dx[k - 1], c.dt[k - 1].count(), c.x[k - 1]);
+      c.th[k] = fma(c.Dth[k - 1], c.dt.count(), c.th[k - 1]);
+      c.x[k] = fma(c.Dx[k - 1], c.dt.count(), c.x[k - 1]);
       c.Dx[k] = c.v[k - 1] * std::cos(c.th[k]);
-      c.y[k] = fma(c.Dy[k - 1], c.dt[k - 1].count(), c.y[k - 1]);
+      c.y[k] = fma(c.Dy[k - 1], c.dt.count(), c.y[k - 1]);
       c.Dy[k] = c.v[k - 1] * std::sin(c.th[k]);
 
       c.ex[k - 1] = c.x[k] - c.xref[k - 1];
@@ -113,19 +113,19 @@ namespace dtl {
     c.pDx[N - 2] = 0;
     c.pDy[N - 2] = 0;
     c.pth[N - 2] = 0;
-    c.grad[N - 2] = c.pth[N - 2] * c.dt[N - 2].count() + c.Dth[N - 2] * c.R;
+    c.grad[N - 2] = c.pth[N - 2] * c.dt.count() + c.Dth[N - 2] * c.R;
     c.curGradNorm = c.grad[N - 2] * c.grad[N - 2];
     // Get the gradient ∂ℋ/∂uₖ, for each step, k in the horizon, loop
     // through each k in N. This involves computing the obstacle potential
     // and Lagrange multiplierc.
     for (int k = N - 3; k >= 0; --k) {
       c.px[k] = c.Q * c.ex[k] + c.DPhiX[k] + c.px[k + 1];
-      c.pDx[k] = c.px[k + 1] * c.dt[k].count();
+      c.pDx[k] = c.px[k + 1] * c.dt.count();
       c.py[k] = c.Q * c.ey[k] + c.DPhiY[k] + c.py[k + 1];
-      c.pDy[k] = c.py[k + 1] * c.dt[k].count();
+      c.pDy[k] = c.py[k + 1] * c.dt.count();
       c.pth[k] = c.pth[k + 1] + c.pDy[k + 1] * c.v[k] * std::cos(c.th[k])
                  - c.pDx[k + 1] * c.v[k] * std::sin(c.th[k]);
-      c.grad[k] = c.R * c.Dth[k] + c.pth[k + 1] * c.dt[k].count();
+      c.grad[k] = c.R * c.Dth[k] + c.pth[k + 1] * c.dt.count();
       c.curGradNorm += c.grad[k] * c.grad[k];
     }
     c.curGradNorm = sqrt(c.curGradNorm);
@@ -166,7 +166,7 @@ namespace dtl {
     };
 
     const double tol =
-        ((c.R + c.Q) * (N - 1) + c.Q0) / N / c.dt[0].count() / 100;
+        ((c.R + c.Q) * (N - 1) + c.Q0) / N / c.dt.count() / 100;
 
     return iterate_while(step, gradNorm_outside(tol), c);
   }
@@ -186,6 +186,7 @@ namespace dtl {
     // TODO: This is from vme-nmpc, but has a bug. v is an N-1 size vector,
     // so v[0] doesn't mean the speed at (x[0],y[0]). I need to coordinate
     // with changes to telep-base to get the real Dx and Dy.
+    c.obstacles = w.obstacles;
     return c;
   }
 
@@ -199,12 +200,12 @@ namespace dtl {
   constexpr NMPCState<N, Clock> plan_reference(NMPCState<N, Clock> c,
                                                const WorldState<Clock> w) {
     XY unit = normalise(w.tgt - w.robot.position);
-    for (auto [k, t] = std::tuple{std::size_t{0}, c.dt[0]}; k < N - 1; ++k) {
-      c.xref[k] = w.robot.position.x + c.v[k] * unit.x * t.count();
-      c.yref[k] = w.robot.position.y + c.v[k] * unit.y * t.count();
-      t += c.dt[k];
+    c.xref[0] = w.robot.position.x + c.v[0] * unit.x * c.dt.count();
+    c.yref[0] = w.robot.position.y + c.v[0] * unit.y * c.dt.count();
+    for (std::size_t k = 1; k < N - 1; ++k) {
+      c.xref[k] = c.xref[k - 1] + c.v[k] * unit.x * c.dt.count();
+      c.yref[k] = c.yref[k - 1] + c.v[k] * unit.y * c.dt.count();
     }
-    c.obstacles = w.obstacles;
     return c;
   }
 

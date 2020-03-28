@@ -20,6 +20,7 @@ constexpr void set_array(T (&x)[N], std::array<T, N>&& list) {
 TEST_CASE("Check for zero-initialisation", "[NMPCState]") {
   NMPCState<5> c;
 
+  REQUIRE(c.dt.count() == 1. / 3);
   REQUIRE(as_vector(c.x) == std::vector<double>{0, 0, 0, 0, 0});
   REQUIRE(as_vector(c.y) == std::vector<double>{0, 0, 0, 0, 0});
   REQUIRE(as_vector(c.th) == std::vector<double>{0, 0, 0, 0, 0});
@@ -71,7 +72,7 @@ TEST_CASE(
     "[dtl][forecast]") {
   const NMPCState<5> base = [] {
     NMPCState<5> base;
-    for (auto& each : base.dt) each = 1s;
+    base.dt = 1s;
     return base;
   }();
 
@@ -204,7 +205,7 @@ TEST_CASE(
     c.th[0] = M_PI_4;
     c.Dx[0] = 0;
     c.Dy[0] = 0;
-    set_array(c.dt, {1s, 1s, 1s, 1s});
+    c.dt = 1s;
     //
     // Following combination of v and Dth should walk to corners of a triangle:
     //    (0,0) → (0,0) → (1,1) → (1,0) → (1,-1)
@@ -253,7 +254,7 @@ TEST_CASE(
     "[dtl][lagrange_gradient]") {
   const auto c = [] {
     NMPCState<5> c;
-    for (auto& each : c.dt) each = 1s;
+    c.dt = 1s;
     c.x[0] = 0;
     c.y[0] = 0;
     c.th[0] = M_PI_4;
@@ -292,7 +293,7 @@ TEST_CASE(
     "[dtl][sd_optimise]") {
   const auto c = [] {
     NMPCState<5> c;
-    for (auto& each : c.dt) each = 1s;
+    c.dt = 1s;
     c.x[0] = 0;
     c.y[0] = 0;
     c.th[0] = M_PI_4;
@@ -325,7 +326,7 @@ TEST_CASE(
     "[dtl][sd_optimise]") {
   const auto c = [] {
     NMPCState<5> c;
-    for (auto& each : c.dt) each = 1s;
+    c.dt = 1s;
     c.x[0] = 0;
     c.y[0] = 0;
     c.th[0] = M_PI_4;
@@ -358,7 +359,7 @@ TEST_CASE(
   const auto c = [] {
     NMPCState<5> c;
     set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-    set_array(c.dt, {1s, 1s, 1s, 1s});
+    c.dt = 1s;
     return c;
   }();
   const auto w = [] {
@@ -375,14 +376,14 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Starting at (8,8) with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 and "
+    "Starting at (8, 8) with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 and "
     "time intervals d𝑡 = 1s, we should plan a reference [(7,7), (6,6), (5,5), "
     "(4,4)].",
     "[dtl][plan_reference]") {
   const auto c = [] {
     NMPCState<5> c;
     set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-    set_array(c.dt, {1s, 1s, 1s, 1s});
+    c.dt = 1s;
     return c;
   }();
   const auto w = [] {
@@ -399,13 +400,61 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Starting at (0, 0) with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 and "
+    "time intervals d𝑡 = 1s, we should plan a reference [(0,1), (0,2), (0,3), "
+    "(0,4)].",
+    "[dtl][plan_reference]") {
+  const auto c = [] {
+    NMPCState<5> c;
+    set_array(c.v, {1, 1, 1, 1});
+    c.dt = 1s;
+    return c;
+  }();
+  const auto w = [] {
+    WorldState<> w;
+    w.tgt = {0, 1};
+    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
+    return w;
+  }();
+
+  const auto result = dtl::plan_reference(c, w);
+
+  REQUIRE_THAT(as_vector(result.xref), Catch::Approx<double>({0, 0, 0, 0}));
+  REQUIRE_THAT(as_vector(result.yref), Catch::Approx<double>({1, 2, 3, 4}));
+}
+
+TEST_CASE(
+    "Starting at (0, 0) with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 and "
+    "time intervals d𝑡 = 1s, we should plan a reference [(1,0), (2,0), (3,0), "
+    "(4,0)].",
+    "[dtl][plan_reference]") {
+  const auto c = [] {
+    NMPCState<5> c;
+    set_array(c.v, {1, 1, 1, 1});
+    c.dt = 1s;
+    return c;
+  }();
+  const auto w = [] {
+    WorldState<> w;
+    w.tgt = {1, 0};
+    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
+    return w;
+  }();
+
+  const auto result = dtl::plan_reference(c, w);
+
+  REQUIRE_THAT(as_vector(result.xref), Catch::Approx<double>({1, 2, 3, 4}));
+  REQUIRE_THAT(as_vector(result.yref), Catch::Approx<double>({0, 0, 0, 0}));
+}
+
+TEST_CASE(
     "Starting at the origin with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 "
     "and time intervals d𝑡 = 1s, we should obtain an optimal path of [(1,1), "
     "(2,2), (3,3), (4,4)].",
     "[nmpc_algebra]") {
   auto c = [] {
     NMPCState<5> c;
-    set_array(c.dt, {1s, 1s, 1s, 1s});
+    c.dt = 1s;
     set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
     c.Q0 = 0;
     c.Q = 1;
@@ -436,7 +485,7 @@ TEST_CASE(
     "[nmpc-algebra]") {
   auto c = [] {
     NMPCState<5> c;
-    set_array(c.dt, {1s, 1s, 1s, 1s});
+    c.dt = 1s;
     set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
     set_array(c.Dth, {M_PI_4, M_PI_4, M_PI_4, M_PI_4});
     c.Q0 = 1;
@@ -474,7 +523,7 @@ TEST_CASE(
     "[nmpc-algebra]") {
   auto c1 = [] {
     NMPCState<5> c;
-    set_array(c.dt, {1s, 1s, 1s, 1s});
+    c.dt = 1s;
     set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
     set_array(c.Dth, {0.1, 0.1, 0.1, 0.1});
     c.Q0 = 1;

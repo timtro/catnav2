@@ -48,7 +48,7 @@ int main() {
   const CState c0 = []() {
     CState c;
     for (auto& each : c.v) each = 1.0;
-    for (auto& each : c.dt) each = 1.s / 5.;
+    c.dt = 1.s / 5;
     for (auto& each : c.Dth) each = 0.5;
     c.Q0 = 1;
     c.Q = 1;
