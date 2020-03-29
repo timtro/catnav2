@@ -1,20 +1,47 @@
-add_library (CATCH catch.cpp)
+# automatically enable catch2 to generate ctest targets
 
-macro (create_test target)
-  add_test (NAME ${target} COMMAND $<TARGET_FILE:${target}>)
-endmacro (create_test)
+include(/usr/local/lib/cmake/Catch2/Catch.cmake)
 
-set(testname utest-nmpc_algebra)
-    add_executable (${testname} ${testname}.cpp)
-    target_link_libraries (${testname} CATCH Obstacle)
-    create_test(${testname})
+add_library(catch_main STATIC catch_main.cpp)
+target_link_libraries(catch_main PUBLIC)
 
-set(testname utest-Obstacle)
-    add_executable (${testname} ${testname}.cpp)
-    target_link_libraries (${testname} CATCH Obstacle)
-    create_test(${testname})
+add_executable(utest-nmpc_algebra utest-nmpc_algebra.cpp)
+target_link_libraries(
+  utest-nmpc_algebra PRIVATE project_warnings project_options catch_main
+                             Obstacle)
 
-set(testname utest-XY)
-    add_executable (${testname} ${testname}.cpp)
-    target_link_libraries (${testname} CATCH Obstacle)
-    create_test(${testname})
+add_executable(utest-Obstacle utest-Obstacle.cpp)
+target_link_libraries(utest-Obstacle PRIVATE project_warnings project_options
+                                             catch_main Obstacle)
+
+add_executable(utest-XY utest-XY.cpp)
+target_link_libraries(utest-XY PRIVATE project_warnings project_options
+                                       catch_main)
+
+# automatically discover tests that are defined in catch based test files you
+# can modify the unittests. TEST_PREFIX to whatever you want, or use different
+# for different binaries
+catch_discover_tests(
+  utest-nmpc_algebra
+  TEST_PREFIX
+  "utests."
+  EXTRA_ARGS
+  -s
+  --reporter=xml
+  --out=tests.xml)
+catch_discover_tests(
+  utest-Obstacle
+  TEST_PREFIX
+  "utests."
+  EXTRA_ARGS
+  -s
+  --reporter=xml
+  --out=tests.xml)
+catch_discover_tests(
+  utest-XY
+  TEST_PREFIX
+  "utests."
+  EXTRA_ARGS
+  -s
+  --reporter=xml
+  --out=tests.xml)

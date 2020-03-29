@@ -1,2 +1,4 @@
 add_library(Nav2remote Nav2remote.cpp)
+target_link_libraries(Nav2remote PRIVATE project_options project_warnings)
 add_library(Obstacle Obstacle.cpp)
+target_link_libraries(Obstacle PRIVATE project_options project_warnings)
