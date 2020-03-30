@@ -16,25 +16,24 @@ constexpr std::size_t N = 15;
 using CState = NMPCState<N, std::chrono::steady_clock>;
 using PState = WorldState<std::chrono::steady_clock>;
 
-
 struct WorldInterface {
   const std::chrono::time_point<std::chrono::steady_clock> timeAtStartup =
       std::chrono::steady_clock::now();
   nav2::Remote remoteNav2;
-  const rxcpp::subjects::subject<PState> worldStates;
-  PState curWorld;
+  const rxcpp::subjects::behavior<PState> worldStates;
   std::vector<Target> waypoints;
 
   WorldInterface(const std::string& addr, PState w0)
-      : remoteNav2(addr.c_str()), curWorld{std::move(w0)} {}
+      : remoteNav2(addr.c_str()), worldStates{std::move(w0)} {}
   WorldInterface(const std::string& addr, int port, PState w0)
-      : remoteNav2(addr.c_str(), port), curWorld{std::move(w0)} {}
+      : remoteNav2(addr.c_str(), port), worldStates{std::move(w0)} {}
 
   void try_push_next_worldState() const {
     auto mPose = remoteNav2.estimatePosition();
+    auto curWorld = worldStates.get_value();
     if (mPose) {
-      worldStates.get_subscriber().on_next(PState{
-          curWorld.target, *mPose, curWorld.obstacles});
+      worldStates.get_subscriber().on_next(
+          PState{curWorld.target, *mPose, curWorld.obstacles});
     }
   }
 
@@ -61,7 +60,7 @@ int main() {
   const PState w0 = []() {
     PState w;
     w.target = {{5, 5}, 0.1};
-    w.obstacles = {ob::Point{{2.5,2.5}, 2, 0.15}};
+    w.obstacles = {ob::Point{{2.5, 2.5}, 2, 0.15}};
     return w;
   }();
 
