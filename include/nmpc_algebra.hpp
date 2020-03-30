@@ -9,10 +9,14 @@
 #include "../lib/Nav2remote.hpp"
 #include "../lib/Obstacle.hpp"
 
+struct Target {
+  XY position = {0, 0};
+  double tolerance = 0.1;
+};
+
 template <typename Clock = std::chrono::steady_clock>
 struct WorldState {
-  XY tgt = {0, 0};
-  double tgtTolerance = 0.1;
+  Target target;
   nav2::Pose<Clock> robot;
   std::vector<ob::Obstacle> obstacles;
 };
@@ -20,7 +24,7 @@ struct WorldState {
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 struct NMPCState {
   std::chrono::time_point<Clock> time;
-  std::chrono::duration<double> dt = std::chrono::duration<double>(1./3);
+  std::chrono::duration<double> dt = std::chrono::duration<double>(1. / 3);
   // State Vector:
   double x[N] = {{0}};
   double y[N] = {{0}};
@@ -139,8 +143,9 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> descend(NMPCState<N, Clock> c) noexcept {
     constexpr double sdStepFactor = 0.1;
-    for (std::size_t i = 0; i < N - 1; ++i)
+    for (std::size_t i = 0; i < N - 1; ++i) {
       c.Dth[i] -= sdStepFactor * c.grad[i];
+    }
     return c;
   }
 
@@ -160,13 +165,10 @@ namespace dtl {
     // gradNorm_outside : double → NMPCState → bool
     //
     constexpr auto gradNorm_outside = [](double epsilon) {
-      return [epsilon](auto& c) noexcept {
-        return (c.curGradNorm >= epsilon) ? true : false;
-      };
+      return [epsilon](auto& c) noexcept { return c.curGradNorm >= epsilon; };
     };
 
-    const double tol =
-        ((c.R + c.Q) * (N - 1) + c.Q0) / N / c.dt.count() / 100;
+    const double tol = ((c.R + c.Q) * (N - 1) + c.Q0) / N / c.dt.count() / 100;
 
     return iterate_while(step, gradNorm_outside(tol), c);
   }
@@ -199,7 +201,7 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> plan_reference(NMPCState<N, Clock> c,
                                                const WorldState<Clock> w) {
-    XY unit = normalise(w.tgt - w.robot.position);
+    XY unit = normalise(w.target.position - w.robot.position);
     c.xref[0] = w.robot.position.x + c.v[0] * unit.x * c.dt.count();
     c.yref[0] = w.robot.position.y + c.v[0] * unit.y * c.dt.count();
     for (std::size_t k = 1; k < N - 1; ++k) {
@@ -222,8 +224,9 @@ namespace dtl {
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
                                            const WorldState<Clock> w) {
-  const std::chrono::duration<double> deltaT = w.robot.time - c.time;
-  if (deltaT <= std::chrono::seconds{0}) return c;
+  if (w.robot.time - c.time <= std::chrono::seconds{0}) {
+    return c;
+  }
 
   return dtl::sd_optimise(
       dtl::plan_reference(dtl::with_init_from_world(c, w), w));

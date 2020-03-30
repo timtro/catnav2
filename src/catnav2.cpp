@@ -4,6 +4,7 @@
 #include <iostream>
 #include <rxcpp/rx.hpp>
 #include <rxcpp/subjects/rx-subject.hpp>
+#include <utility>
 
 #include "../include/nmpc_algebra.hpp"
 
@@ -22,17 +23,18 @@ struct WorldInterface {
   nav2::Remote remoteNav2;
   const rxcpp::subjects::subject<PState> worldStates;
   PState curWorld;
+  std::vector<Target> waypoints;
 
-  WorldInterface(std::string addr, PState w0)
-      : remoteNav2(addr.c_str()), curWorld{w0} {}
-  WorldInterface(std::string addr, int port, PState w0)
-      : remoteNav2(addr.c_str(), port), curWorld{w0} {}
+  WorldInterface(const std::string& addr, PState w0)
+      : remoteNav2(addr.c_str()), curWorld{std::move(w0)} {}
+  WorldInterface(const std::string& addr, int port, PState w0)
+      : remoteNav2(addr.c_str(), port), curWorld{std::move(w0)} {}
 
   void try_push_next_worldState() const {
     auto mPose = remoteNav2.estimatePosition();
     if (mPose) {
       worldStates.get_subscriber().on_next(PState{
-          curWorld.tgt, curWorld.tgtTolerance, *mPose, curWorld.obstacles});
+          curWorld.target, *mPose, curWorld.obstacles});
     }
   }
 
@@ -58,7 +60,7 @@ int main() {
 
   const PState w0 = []() {
     PState w;
-    w.tgt = {5, 5};
+    w.target = {{5, 5}, 0.1};
     w.obstacles = {ob::Point{{2.5,2.5}, 2, 0.15}};
     return w;
   }();

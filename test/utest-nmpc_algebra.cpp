@@ -364,7 +364,7 @@ TEST_CASE(
   }();
   const auto w = [] {
     WorldState<> w;
-    w.tgt = {1, 1};
+    w.target = {{1, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     return w;
   }();
@@ -388,7 +388,7 @@ TEST_CASE(
   }();
   const auto w = [] {
     WorldState<> w;
-    w.tgt = {1, 1};
+    w.target = {{1, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {8, 8}, -3 * M_PI_4};
     return w;
   }();
@@ -412,7 +412,7 @@ TEST_CASE(
   }();
   const auto w = [] {
     WorldState<> w;
-    w.tgt = {0, 1};
+    w.target = {{1, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
     return w;
   }();
@@ -436,7 +436,7 @@ TEST_CASE(
   }();
   const auto w = [] {
     WorldState<> w;
-    w.tgt = {1, 0};
+    w.target = {{1, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
     return w;
   }();
@@ -463,7 +463,7 @@ TEST_CASE(
   }();
   auto w = [] {
     WorldState<> w;
-    w.tgt = {1, 1};
+    w.target = {{1, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     w.obstacles = std::vector<ob::Obstacle>{ob::Null()};
     return w;
@@ -495,7 +495,7 @@ TEST_CASE(
   }();
   auto w = [] {
     WorldState<> w;
-    w.tgt = {1, 1};
+    w.target = {{1, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
@@ -537,7 +537,7 @@ TEST_CASE(
   }();
   auto w = [] {
     WorldState<> w;
-    w.tgt = {1, 1};
+    w.target = {{1, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {0, 0}, 0};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
