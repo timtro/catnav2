@@ -10,40 +10,48 @@
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
+using std::chrono::steady_clock;
+using std::chrono::time_point;
 
 constexpr std::size_t N = 15;
 
-using CState = NMPCState<N, std::chrono::steady_clock>;
-using PState = WorldState<std::chrono::steady_clock>;
+using CState = NMPCState<N, steady_clock>;
+using PState = WorldState<steady_clock>;
 
-struct WorldInterface {
-  const std::chrono::time_point<std::chrono::steady_clock> timeAtStartup =
-      std::chrono::steady_clock::now();
-  nav2::Remote remoteNav2;
-  const rxcpp::subjects::behavior<PState> worldStates;
-  std::vector<Target> waypoints;
+namespace {
 
-  WorldInterface(const std::string& addr, PState w0)
-      : remoteNav2(addr.c_str()), worldStates{std::move(w0)} {}
-  WorldInterface(const std::string& addr, int port, PState w0)
-      : remoteNav2(addr.c_str(), port), worldStates{std::move(w0)} {}
+  class WorldInterface {
+    const time_point<steady_clock> timeAtStartup = steady_clock::now();
+    std::vector<Target> waypoints;
+    PState curWorldState;
 
-  void try_push_next_worldState() const {
-    auto mPose = remoteNav2.estimatePosition();
-    auto curWorld = worldStates.get_value();
-    if (mPose) {
-      worldStates.get_subscriber().on_next(
-          PState{curWorld.target, *mPose, curWorld.obstacles});
+   public:
+    nav2::Remote remoteNav2;
+    const rxcpp::subjects::subject<PState> worldStates;
+
+    WorldInterface(const std::string& addr, PState w0)
+        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str()) {}
+    WorldInterface(const std::string& addr, int port, PState w0)
+        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str(), port) {}
+
+    void push_next_worldState() const {
+      auto mPose = remoteNav2.estimatePosition();
+      if (mPose) {
+        worldStates.get_subscriber().on_next(
+            PState{curWorldState.target, *mPose, curWorldState.obstacles});
+      }
     }
-  }
 
-  void controlled_step(CState& c) {
-    remoteNav2.execute(nav2::actions::SetRelativeVelocity{0, c.v[0], c.Dth[0]});
-    try_push_next_worldState();
+    void controlled_step(CState& c) {
+      remoteNav2.execute(
+          nav2::actions::SetRelativeVelocity{0, c.v[0], c.Dth[0]});
+      push_next_worldState();
+    };
+
+    auto get_world_observable() const { return worldStates.get_observable(); }
   };
 
-  auto get_world_observable() const { return worldStates.get_observable(); }
-};
+}  // namespace
 
 int main() {
   const CState c0 = []() {
@@ -59,16 +67,12 @@ int main() {
 
   const PState w0 = []() {
     PState w;
-    w.target = {{5, 5}, 0.1};
-    w.obstacles = {ob::Point{{2.5, 2.5}, 2, 0.15}};
+    w.target = {{20,0}, 0.1};
+    w.obstacles = {ob::Point{{10, 0}, 2, 0.15}};
     return w;
   }();
 
   WorldInterface worldIface("localhost", w0);
-
-  // std::vector<PState> plantStateRecord;
-  // worldIface.get_world_observable().subscribe(
-  //     [&](PState x) { plantStateRecord.push_back(x); });
 
   // A classical confiuration for a feedback controller is illustrated as:
   //                  err   u
@@ -95,5 +99,5 @@ int main() {
       [&worldIface](CState c) { worldIface.controlled_step(c); });
 
   worldIface.remoteNav2.setPosition(0, 0, 0);
-  worldIface.try_push_next_worldState();
+  worldIface.push_next_worldState();
 }
