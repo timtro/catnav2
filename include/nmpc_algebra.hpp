@@ -40,7 +40,7 @@ struct NMPCState {
   double yref[N - 1] = {{0}};
   double ex[N - 1] = {{0}};
   double ey[N - 1] = {{0}};
-  // Obstacle potential gradient for each point of the trajectory:
+  // Obstacle potential gradient for all but starting point of the trajectory:
   double DPhiX[N - 1] = {{0}};
   double DPhiY[N - 1] = {{0}};
   // Lagrange Multipliers:
@@ -182,7 +182,7 @@ namespace dtl {
     c.time = w.robot.time;
     c.x[0] = w.robot.position.x;
     c.y[0] = w.robot.position.y;
-    c.th[0] = w.robot.orien;
+    c.th[0] = w.robot.orientation;
     c.Dx[0] = c.v[0] * std::cos(c.th[0]);
     c.Dy[0] = c.v[0] * std::sin(c.th[0]);
     // TODO: This is from vme-nmpc, but has a bug. v is an N-1 size vector,

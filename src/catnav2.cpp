@@ -24,15 +24,21 @@ namespace {
     const time_point<steady_clock> timeAtStartup = steady_clock::now();
     std::vector<Target> waypoints;
     PState curWorldState;
+    nav2::Remote remoteNav2;
 
    public:
-    nav2::Remote remoteNav2;
     const rxcpp::subjects::subject<PState> worldStates;
 
     WorldInterface(const std::string& addr, PState w0)
-        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str()) {}
+        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str()) {
+      auto [x0, y0] = curWorldState.robot.position;
+      remoteNav2.setPosition(x0, y0, curWorldState.robot.orientation);
+    }
     WorldInterface(const std::string& addr, int port, PState w0)
-        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str(), port) {}
+        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str(), port) {
+      auto [x0, y0] = curWorldState.robot.position;
+      remoteNav2.setPosition(x0, y0, curWorldState.robot.orientation);
+    }
 
     void push_next_worldState() const {
       auto mPose = remoteNav2.estimatePosition();
@@ -67,8 +73,10 @@ int main() {
 
   const PState w0 = []() {
     PState w;
-    w.target = {{20,0}, 0.1};
+    w.target = {{20, 0}, 0.1};
     w.obstacles = {ob::Point{{10, 0}, 2, 0.15}};
+    w.robot.position = {0,0};
+    w.robot.orientation = M_PI_4;
     return w;
   }();
 
@@ -98,6 +106,5 @@ int main() {
   sControls.subscribe(
       [&worldIface](CState c) { worldIface.controlled_step(c); });
 
-  worldIface.remoteNav2.setPosition(0, 0, 0);
   worldIface.push_next_worldState();
 }

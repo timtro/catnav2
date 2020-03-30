@@ -37,7 +37,7 @@ namespace nav2 {
   struct Pose {
     std::chrono::time_point<Clock> time;
     XY position;
-    double orien;
+    double orientation;
   };
 
   template <typename Clock = std::chrono::steady_clock>
