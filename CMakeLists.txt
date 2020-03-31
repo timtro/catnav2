@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
 # Set the project name to your project name, my project isn't very descriptive
-project(catnav2 CXX)
+project(catnav2 LANGUAGES CXX)
 include(cmake/StandardProjectSettings.cmake)
 
 # Link this 'library' to set the c++ standard / compile-time options requested
@@ -30,12 +30,12 @@ option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ENABLE_TESTING "Enable Test Builds" ON)
 
 # Very basic PCH example
-option(ENABLE_PCH "Enable Precompiled Headers" OFF)
+option(ENABLE_PCH "Enable Precompiled Headers" ON)
 if(ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which
   # is a good idea if any #define's change
   #
-  target_precompile_headers(project_options INTERFACE <vector> <string> <map>
+  target_precompile_headers(project_options INTERFACE <vector> <string> <queue>
                             <utility>)
 endif()
 
