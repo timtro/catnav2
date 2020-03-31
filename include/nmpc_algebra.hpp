@@ -9,6 +9,8 @@
 #include "../lib/Nav2remote.hpp"
 #include "../lib/Obstacle.hpp"
 
+enum class InfoFlag { OK, TargetReached, STOP, Null };
+
 struct Target {
   XY position = {0, 0};
   double tolerance = 0.1;
@@ -59,6 +61,7 @@ struct NMPCState {
       Q0 = 0;    // Terminal error penalty
   // Collection of obstacles used to compute (DPhiX, DPhiY).
   std::vector<ob::Obstacle> obstacles;
+  InfoFlag infoFlag = InfoFlag::OK;
 };
 
 namespace dtl {
@@ -225,9 +228,16 @@ template <std::size_t N, typename Clock = std::chrono::steady_clock>
 constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
                                            const WorldState<Clock> w) {
   if (w.robot.time - c.time <= std::chrono::seconds{0}) {
+    c.infoFlag = InfoFlag::STOP;
     return c;
   }
 
+  if (l2norm(w.target.position - w.robot.position) < w.target.tolerance) {
+    c.infoFlag = InfoFlag::TargetReached;
+    return c;
+  }
+
+  c.infoFlag = InfoFlag::OK;
   return dtl::sd_optimise(
       dtl::plan_reference(dtl::with_init_from_world(c, w), w));
 }

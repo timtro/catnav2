@@ -2,6 +2,7 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <queue>
 #include <rxcpp/rx.hpp>
 #include <rxcpp/subjects/rx-subject.hpp>
 #include <utility>
@@ -22,12 +23,12 @@ namespace {
 
   class WorldInterface {
     const time_point<steady_clock> timeAtStartup = steady_clock::now();
-    std::vector<Target> waypoints;
+    std::queue<Target> waypoints;
     PState curWorldState;
     nav2::Remote remoteNav2;
+    const rxcpp::subjects::subject<PState> worldStates;
 
    public:
-    const rxcpp::subjects::subject<PState> worldStates;
 
     WorldInterface(const std::string& addr, PState w0)
         : curWorldState{std::move(w0)}, remoteNav2(addr.c_str()) {
@@ -49,8 +50,32 @@ namespace {
     }
 
     void controlled_step(CState& c) {
-      remoteNav2.execute(
-          nav2::actions::SetRelativeVelocity{0, c.v[0], c.Dth[0]});
+      switch (c.infoFlag) {
+        case InfoFlag::OK:
+          remoteNav2.execute(
+              nav2::actions::SetRelativeVelocity{0, c.v[0], c.Dth[0]});
+          break;
+
+        case InfoFlag::STOP:
+          remoteNav2.execute(nav2::actions::Stop{});
+          break;
+
+        case InfoFlag::TargetReached:
+          if (waypoints.empty()) {
+            remoteNav2.execute(nav2::actions::Stop{});
+            std::this_thread::sleep_for(1s);
+          } else {
+            waypoints.pop();
+            curWorldState.target = waypoints.front();
+          }
+          break;
+
+        case InfoFlag::Null:
+          break;
+
+        default:
+          remoteNav2.execute(nav2::actions::Stop{});
+      }
       push_next_worldState();
     };
 
@@ -62,20 +87,20 @@ namespace {
 int main() {
   const CState c0 = []() {
     CState c;
-    for (auto& each : c.v) each = 1.0;
+    for (auto& each : c.v) each = 1.25;
     c.dt = 1.s / 5;
     for (auto& each : c.Dth) each = 0.5;
     c.Q0 = 1;
     c.Q = 1;
-    c.R = 0.33;
+    c.R = 0.15;
     return c;
   }();
 
   const PState w0 = []() {
     PState w;
-    w.target = {{20, 0}, 0.1};
-    w.obstacles = {ob::Point{{10, 0}, 2, 0.15}};
-    w.robot.position = {0,0};
+    w.target = {{10, 0}, 0.5};
+    w.obstacles = {ob::Point{{5, 0}, 2, 0.3333}};
+    w.robot.position = {0, 0};
     w.robot.orientation = M_PI_4;
     return w;
   }();
