@@ -400,8 +400,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Starting at (0, 0) with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 and "
-    "time intervals d𝑡 = 1s, we should plan a reference [(0,1), (0,2), (0,3), "
+    "Starting at (0, 0) with a target along 𝑦, at a speed of 𝑣 = 1 and time "
+    "intervals d𝑡 = 1s, we should plan a reference [(0,1), (0,2), (0,3), "
     "(0,4)].",
     "[dtl][plan_reference]") {
   const auto c = [] {
@@ -412,7 +412,7 @@ TEST_CASE(
   }();
   const auto w = [] {
     WorldState<> w;
-    w.target = {{1, 1}, 0.1};
+    w.target = {{0, 1}, 0.1};
     w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
     return w;
   }();
@@ -424,8 +424,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Starting at (0, 0) with a target along 𝑦 = 𝑥, at a speed of 𝑣 = √2 and "
-    "time intervals d𝑡 = 1s, we should plan a reference [(1,0), (2,0), (3,0), "
+    "Starting at (0, 0) with a target along 𝑥, at a speed of 𝑣 = 1 and time "
+    "intervals d𝑡 = 1s, we should plan a reference [(1,0), (2,0), (3,0), "
     "(4,0)].",
     "[dtl][plan_reference]") {
   const auto c = [] {
@@ -436,8 +436,8 @@ TEST_CASE(
   }();
   const auto w = [] {
     WorldState<> w;
-    w.target = {{1, 1}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
+    w.target = {{1, 0}, 0.1};
+    w.robot = {std::chrono::steady_clock::now(), {0, 0}, 0};
     return w;
   }();
 
