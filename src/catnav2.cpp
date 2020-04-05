@@ -26,9 +26,10 @@ namespace {
     std::queue<Target> waypoints;
     PState curWorldState;
     nav2::Remote remoteNav2;
-    const rxcpp::subjects::subject<PState> worldStates;
 
    public:
+    const rxcpp::subjects::subject<PState> worldStates;
+    const rxcpp::subjects::subject<Target> targetSetpoint;
 
     WorldInterface(const std::string& addr, PState w0)
         : curWorldState{std::move(w0)}, remoteNav2(addr.c_str()) {
@@ -125,6 +126,12 @@ int main() {
   //
   const auto sControls = worldIface
                              .get_world_observable()  // worldIface == ◼.
+                             .combine_latest(
+                                 [](WorldState<> w, Target t) {
+                                   w.target = t;
+                                   return w;
+                                 },
+                                 worldIface.targetSetpoint.get_observable())
                              .observe_on(rxcpp::identity_current_thread())
                              .scan(c0, nmpc_algebra<N>);  //   This is C
 

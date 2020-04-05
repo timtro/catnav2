@@ -3,5 +3,8 @@ Checks:          '*,-fuchsia-*,-google-*,-zircon-*,-abseil-*,-modernize-use-trai
 WarningsAsErrors: '1'
 HeaderFilterRegex: ''
 FormatStyle:     none
-
-
+CheckOptions:
+- key:             cppcoreguidelines-avoid-magic-numbers.IgnoreAllFloatingPointValues
+  value:           1
+- key:             readability-magic-numbers.IgnoreAllFloatingPointValues
+  value:           1
