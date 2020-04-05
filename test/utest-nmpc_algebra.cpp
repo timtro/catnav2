@@ -365,7 +365,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.target = {{1, 1}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
+    w.nav2pose = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     return w;
   }();
 
@@ -389,7 +389,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.target = {{1, 1}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {8, 8}, -3 * M_PI_4};
+    w.nav2pose = {std::chrono::steady_clock::now(), {8, 8}, -3 * M_PI_4};
     return w;
   }();
 
@@ -413,7 +413,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.target = {{0, 1}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
+    w.nav2pose = {std::chrono::steady_clock::now(), {0, 0}, M_PI_2};
     return w;
   }();
 
@@ -437,7 +437,7 @@ TEST_CASE(
   const auto w = [] {
     WorldState<> w;
     w.target = {{1, 0}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {0, 0}, 0};
+    w.nav2pose = {std::chrono::steady_clock::now(), {0, 0}, 0};
     return w;
   }();
 
@@ -464,7 +464,7 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.target = {{1, 1}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
+    w.nav2pose = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     w.obstacles = std::vector<ob::Obstacle>{ob::Null()};
     return w;
   }();
@@ -496,7 +496,7 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.target = {{1, 1}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
+    w.nav2pose = {std::chrono::steady_clock::now(), {0, 0}, M_PI_4};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
     return w;
@@ -538,7 +538,7 @@ TEST_CASE(
   auto w = [] {
     WorldState<> w;
     w.target = {{1, 1}, 0.1};
-    w.robot = {std::chrono::steady_clock::now(), {0, 0}, 0};
+    w.nav2pose = {std::chrono::steady_clock::now(), {0, 0}, 0};
     w.obstacles = std::vector<ob::Obstacle>{ob::Point{{2.5, 0}, 1, .01},
                                             ob::Point{{3.5, 1}, 2, 0.01}};
     return w;

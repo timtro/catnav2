@@ -9,7 +9,14 @@
 #include "../lib/Nav2remote.hpp"
 #include "../lib/Obstacle.hpp"
 
-enum class InfoFlag { OK, TargetReached, STOP, Null };
+enum class InfoFlag {
+  OK,
+  TargetReached,
+  NoTarget,
+  MissingWorldData,
+  STOP,
+  Null
+};
 
 struct Target {
   XY position = {0, 0};
@@ -18,8 +25,8 @@ struct Target {
 
 template <typename Clock = std::chrono::steady_clock>
 struct WorldState {
-  Target target;
-  nav2::Pose<Clock> robot;
+  std::optional<Target> target;
+  std::optional<nav2::Pose<Clock>> nav2pose;
   std::vector<ob::Obstacle> obstacles;
 };
 
@@ -182,10 +189,10 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> with_init_from_world(
       NMPCState<N, Clock> c, const WorldState<Clock> w) noexcept {
-    c.time = w.robot.time;
-    c.x[0] = w.robot.position.x;
-    c.y[0] = w.robot.position.y;
-    c.th[0] = w.robot.orientation;
+    c.time = w.nav2pose->time;
+    c.x[0] = w.nav2pose->position.x;
+    c.y[0] = w.nav2pose->position.y;
+    c.th[0] = w.nav2pose->orientation;
     c.Dx[0] = c.v[0] * std::cos(c.th[0]);
     c.Dy[0] = c.v[0] * std::sin(c.th[0]);
     // TODO: This is from vme-nmpc, but has a bug. v is an N-1 size vector,
@@ -204,9 +211,9 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> plan_reference(NMPCState<N, Clock> c,
                                                const WorldState<Clock> w) {
-    XY unit = normalise(w.target.position - w.robot.position);
-    c.xref[0] = w.robot.position.x + c.v[0] * unit.x * c.dt.count();
-    c.yref[0] = w.robot.position.y + c.v[0] * unit.y * c.dt.count();
+    XY unit = normalise(w.target->position - w.nav2pose->position);
+    c.xref[0] = w.nav2pose->position.x + c.v[0] * unit.x * c.dt.count();
+    c.yref[0] = w.nav2pose->position.y + c.v[0] * unit.y * c.dt.count();
     for (std::size_t k = 1; k < N - 1; ++k) {
       c.xref[k] = c.xref[k - 1] + c.v[k] * unit.x * c.dt.count();
       c.yref[k] = c.yref[k - 1] + c.v[k] * unit.y * c.dt.count();
@@ -227,12 +234,19 @@ namespace dtl {
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
                                            const WorldState<Clock> w) {
-  if (w.robot.time - c.time <= std::chrono::seconds{0}) {
+  if (!w.target) {
+    c.infoFlag = InfoFlag::NoTarget;
+    return c;
+  }
+  if (!w.nav2pose) {
+    c.infoFlag = InfoFlag::MissingWorldData;
+    return c;
+  }
+  if (w.nav2pose->time - c.time <= std::chrono::seconds{0}) {
     c.infoFlag = InfoFlag::STOP;
     return c;
   }
-
-  if (l2norm(w.target.position - w.robot.position) < w.target.tolerance) {
+  if (l2norm(w.target->position - w.nav2pose->position) < w.target->tolerance) {
     c.infoFlag = InfoFlag::TargetReached;
     return c;
   }

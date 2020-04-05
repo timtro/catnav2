@@ -23,31 +23,28 @@ namespace {
 
   class WorldInterface {
     const time_point<steady_clock> timeAtStartup = steady_clock::now();
-    std::queue<Target> waypoints;
     PState curWorldState;
     nav2::Remote remoteNav2;
 
    public:
     const rxcpp::subjects::subject<PState> worldStates;
-    const rxcpp::subjects::subject<Target> targetSetpoint;
+    const rxcpp::subjects::subject<std::optional<Target>> targetSetpoint;
 
     WorldInterface(const std::string& addr, PState w0)
         : curWorldState{std::move(w0)}, remoteNav2(addr.c_str()) {
-      auto [x0, y0] = curWorldState.robot.position;
-      remoteNav2.setPosition(x0, y0, curWorldState.robot.orientation);
+      auto [x0, y0] = curWorldState.nav2pose->position;
+      remoteNav2.setPosition(x0, y0, curWorldState.nav2pose->orientation);
     }
     WorldInterface(const std::string& addr, int port, PState w0)
         : curWorldState{std::move(w0)}, remoteNav2(addr.c_str(), port) {
-      auto [x0, y0] = curWorldState.robot.position;
-      remoteNav2.setPosition(x0, y0, curWorldState.robot.orientation);
+      auto [x0, y0] = curWorldState.nav2pose->position;
+      remoteNav2.setPosition(x0, y0, curWorldState.nav2pose->orientation);
     }
 
     void push_next_worldState() const {
-      auto mPose = remoteNav2.estimatePosition();
-      if (mPose) {
-        worldStates.get_subscriber().on_next(
-            PState{curWorldState.target, *mPose, curWorldState.obstacles});
-      }
+      worldStates.get_subscriber().on_next(PState{curWorldState.target,
+                                                  remoteNav2.estimatePosition(),
+                                                  curWorldState.obstacles});
     }
 
     void controlled_step(CState& c) {
@@ -61,14 +58,11 @@ namespace {
           remoteNav2.execute(nav2::actions::Stop{});
           break;
 
+        case InfoFlag::MissingWorldData:
+        case InfoFlag::NoTarget:
         case InfoFlag::TargetReached:
-          if (waypoints.empty()) {
-            remoteNav2.execute(nav2::actions::Stop{});
-            std::this_thread::sleep_for(1s);
-          } else {
-            waypoints.pop();
-            curWorldState.target = waypoints.front();
-          }
+          remoteNav2.execute(nav2::actions::Stop{});
+          std::this_thread::sleep_for(1s);
           break;
 
         case InfoFlag::Null:
@@ -79,8 +73,6 @@ namespace {
       }
       push_next_worldState();
     };
-
-    auto get_world_observable() const { return worldStates.get_observable(); }
   };
 
 }  // namespace
@@ -88,6 +80,7 @@ namespace {
 int main() {
   const CState c0 = []() {
     CState c;
+    c.infoFlag = InfoFlag::NoTarget;
     for (auto& each : c.v) each = 1.25;
     c.dt = 1.s / 5;
     for (auto& each : c.Dth) each = 0.5;
@@ -99,10 +92,9 @@ int main() {
 
   const PState w0 = []() {
     PState w;
-    w.target = {{10, 0}, 0.5};
+    w.target = std::nullopt;
     w.obstacles = {ob::Point{{5, 0}, 2, 0.3333}};
-    w.robot.position = {0, 0};
-    w.robot.orientation = M_PI_4;
+    w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, M_PI_2};
     return w;
   }();
 
@@ -115,28 +107,32 @@ int main() {
   //                │               │
   //                ╰───────────────┘
   // If you open the loop and place an interface to the imperative world, ◼,
-  // at the endpoints, the controller becomes:
+  // at the endpoints, the configuration becomes:
   //
-  // setPoint  err   u
-  //    ◼ ─➤ ⊕ ──➤ C ──➤ ◼
-  //        -↑
-  //         │ plantState
-  //         ◼
-  // which is in 1:1 correspondence with the code below (read backward from C)
+  //    setPoint   err     u
+  //    ◼ ─────> ⊗ ───> C ───> ◼
+  //             ^
+  //             │ plantState
+  //             ◼
+  // which is in 1:1 correspondence with the code below.
+  //   (NB: generalization of ⊕ to ⊗.
   //
   const auto sControls = worldIface
-                             .get_world_observable()  // worldIface == ◼.
-                             .combine_latest(
-                                 [](WorldState<> w, Target t) {
+                             .worldStates       //       plantState
+                             .get_observable()  //        ◼ ─────⮧
+                             .combine_latest(  // target  ◼ ───> ⊗ ─> ⋯
+                                 [](WorldState<> w, std::optional<Target> t) {
                                    w.target = t;
                                    return w;
                                  },
                                  worldIface.targetSetpoint.get_observable())
                              .observe_on(rxcpp::identity_current_thread())
-                             .scan(c0, nmpc_algebra<N>);  //   This is C
+                             .scan(c0, nmpc_algebra<N>);  // → C
 
-  sControls.subscribe(
+  // This completes the loop:      u
+  sControls.subscribe(  //      C ───> ◼
       [&worldIface](CState c) { worldIface.controlled_step(c); });
 
+  worldIface.targetSetpoint.get_subscriber().on_next(Target{{10, 0}, 0.5});
   worldIface.push_next_worldState();
 }
