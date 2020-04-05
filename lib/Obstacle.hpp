@@ -15,7 +15,7 @@ namespace ob {
      *          ρ
      *         𝑟  + ε
      */
-    XY coords;
+    XY position;
     double pwr;      // pwr ≔ ρ
     double epsilon;  // epsilon ≔ ε
   };
