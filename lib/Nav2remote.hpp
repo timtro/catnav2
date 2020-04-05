@@ -11,6 +11,7 @@
 #include <variant>
 
 #include "../include/XY.hpp"
+#include "../include/nav2_Pose.hpp"
 
 /**
  * @brief
@@ -32,13 +33,6 @@
  */
 
 namespace nav2 {
-
-  template <typename Clock = std::chrono::steady_clock>
-  struct Pose {
-    std::chrono::time_point<Clock> time;
-    XY position;
-    double orientation;
-  };
 
   template <typename Clock = std::chrono::steady_clock>
   struct XYState {

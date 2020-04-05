@@ -7,6 +7,7 @@
 #include <rxcpp/subjects/rx-subject.hpp>
 #include <utility>
 
+#include "../lib/Nav2remote.hpp"
 #include "../include/nmpc_algebra.hpp"
 
 using namespace std::string_literals;

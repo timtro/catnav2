@@ -6,7 +6,7 @@
 #include <type_traits>
 
 #include "../include/list-fmap.hpp"
-#include "../lib/Nav2remote.hpp"
+#include "../include/nav2_Pose.hpp"
 #include "../lib/Obstacle.hpp"
 
 enum class InfoFlag {
