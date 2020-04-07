@@ -30,7 +30,7 @@ option(BUILD_SHARED_LIBS "Enable compilation of shared libraries" OFF)
 option(ENABLE_TESTING "Enable Test Builds" ON)
 
 # Very basic PCH example
-option(ENABLE_PCH "Enable Precompiled Headers" ON)
+option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 if(ENABLE_PCH)
   # This sets a global PCH parameter, each project will build its own PCH, which
   # is a good idea if any #define's change

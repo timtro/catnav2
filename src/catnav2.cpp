@@ -7,8 +7,8 @@
 #include <rxcpp/subjects/rx-subject.hpp>
 #include <utility>
 
-#include "../lib/Nav2remote.hpp"
 #include "../include/nmpc_algebra.hpp"
+#include "../lib/Nav2remote.hpp"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -24,28 +24,24 @@ namespace {
 
   class WorldInterface {
     const time_point<steady_clock> timeAtStartup = steady_clock::now();
-    PState curWorldState;
     nav2::Remote remoteNav2;
+    std::vector<ob::Obstacle> obstacles;
 
    public:
-    const rxcpp::subjects::subject<PState> worldStates;
-    const rxcpp::subjects::subject<std::optional<Target>> targetSetpoint;
+    const rxcpp::observable<PState> worldStates =
+        rxcpp::observable<>::interval(100ms).map([this](auto) {
+          return PState{std::nullopt, remoteNav2.estimatePosition(), obstacles};
+        });
 
-    WorldInterface(const std::string& addr, PState w0)
-        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str()) {
-      auto [x0, y0] = curWorldState.nav2pose->position;
-      remoteNav2.setPosition(x0, y0, curWorldState.nav2pose->orientation);
-    }
-    WorldInterface(const std::string& addr, int port, PState w0)
-        : curWorldState{std::move(w0)}, remoteNav2(addr.c_str(), port) {
-      auto [x0, y0] = curWorldState.nav2pose->position;
-      remoteNav2.setPosition(x0, y0, curWorldState.nav2pose->orientation);
-    }
+    const rxcpp::observable<std::optional<Target>> targetSetpoint;
 
-    void push_next_worldState() const {
-      worldStates.get_subscriber().on_next(PState{curWorldState.target,
-                                                  remoteNav2.estimatePosition(),
-                                                  curWorldState.obstacles});
+    WorldInterface(PState w0, const std::string& addr, int port=5010)
+        : remoteNav2(addr.c_str(), port),
+          obstacles(w0.obstacles),
+          targetSetpoint(
+              rxcpp::observable<>::just<std::optional<Target>>(w0.target)) {
+      auto [x0, y0] = w0.nav2pose->position;
+      remoteNav2.setPosition(x0, y0, w0.nav2pose->orientation);
     }
 
     void controlled_step(CState& c) {
@@ -72,7 +68,6 @@ namespace {
         default:
           remoteNav2.execute(nav2::actions::Stop{});
       }
-      push_next_worldState();
     };
   };
 
@@ -93,13 +88,14 @@ int main() {
 
   const PState w0 = []() {
     PState w;
-    w.target = std::nullopt;
+    w.target = {{10, 0}, 0.5};
     w.obstacles = {ob::Point{{5, 0}, 2, 0.3333}};
-    w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, M_PI_2};
+    w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, M_PI_4};
     return w;
   }();
 
-  WorldInterface worldIface("localhost", w0);
+  WorldInterface worldIface(w0, "localhost");
+  auto thr = rxcpp::synchronize_event_loop();
 
   // A classical confiuration for a feedback controller is illustrated as:
   //                  err   u
@@ -117,23 +113,24 @@ int main() {
   //             ◼
   // which is in 1:1 correspondence with the code below.
   //   (NB: generalization of ⊕ to ⊗.
-  //
-  const auto sControls = worldIface
-                             .worldStates       //       plantState
-                             .get_observable()  //        ◼ ─────⮧
-                             .combine_latest(  // target  ◼ ───> ⊗ ─> ⋯
-                                 [](WorldState<> w, std::optional<Target> t) {
-                                   w.target = t;
-                                   return w;
-                                 },
-                                 worldIface.targetSetpoint.get_observable())
-                             .observe_on(rxcpp::identity_current_thread())
-                             .scan(c0, nmpc_algebra<N>);  // → C
-
-  // This completes the loop:      u
-  sControls.subscribe(  //      C ───> ◼
-      [&worldIface](CState c) { worldIface.controlled_step(c); });
-
-  worldIface.targetSetpoint.get_subscriber().on_next(Target{{10, 0}, 0.5});
-  worldIface.push_next_worldState();
+  // clang-format off
+  const auto sControls =
+                  worldIface                          //        plantState
+                    .worldStates                      //         ◼ ─────⮧  𝑒
+                    .combine_latest(                  // target  ◼ ───> ⊗ ───> ⋯
+                      [](WorldState<> w, std::optional<Target> t) {
+                        w.target = t;
+                        return w;
+                      },
+                      worldIface.targetSetpoint)
+                    .observe_on(rxcpp::identity_current_thread())
+                                                      //    𝑒
+                    .scan(c0, nmpc_algebra<N>)        //   ───> C
+                    .subscribe(
+                      [&worldIface](CState c) {       //      𝑢
+                        worldIface.controlled_step(c);//   C ───> ◼
+                      });
+  // clang-format on
+  // Think of subscribe as `for_each`, but for an asynchronous stream of
+  // values instead of an iterable list.
 }

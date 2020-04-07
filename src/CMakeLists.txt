@@ -6,4 +6,4 @@ target_sources(
             ../include/nav2_Pose.hpp)
 
 target_link_libraries(catnav2 PRIVATE project_warnings project_options
-                                      Nav2remote Obstacle)
+                                      Nav2remote Obstacle -lpthread)
