@@ -90,7 +90,7 @@ int main() {
     PState w;
     w.target = {{10, 0}, 0.5};
     w.obstacles = {ob::Point{{5, 0}, 2, 0.3333}};
-    w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, M_PI_4};
+    w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, 0};
     return w;
   }();
 
