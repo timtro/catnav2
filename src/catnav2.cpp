@@ -7,6 +7,7 @@
 #include <rxcpp/subjects/rx-subject.hpp>
 #include <utility>
 
+#include "../include/CFileContainer.hpp"
 #include "../include/nmpc_algebra.hpp"
 #include "../lib/Nav2remote.hpp"
 
@@ -35,7 +36,7 @@ namespace {
 
     const rxcpp::observable<std::optional<Target>> targetSetpoint;
 
-    WorldInterface(PState w0, const std::string& addr, int port=5010)
+    WorldInterface(PState w0, const std::string& addr, int port = 5010)
         : remoteNav2(addr.c_str(), port),
           obstacles(w0.obstacles),
           targetSetpoint(
@@ -70,6 +71,39 @@ namespace {
       }
     };
   };
+
+  // struct JsonLogger {
+  //   std::unique_ptr<CFileContainer> logFile;
+
+  //   JsonLogger(const JsonLogger&) = delete;
+  //   JsonLogger(const JsonLogger&&) = delete;
+  //   JsonLogger& operator=(const JsonLogger&) = delete;
+  //   JsonLogger& operator=(const JsonLogger&&) = delete;
+  //   explicit JsonLogger(std::string outputFilePath);
+  //   ~JsonLogger();
+  // };
+
+  // JsonLogger::JsonLogger(std::string outputFilePath) {
+  //   logFile = std::make_unique<CFileContainer>(outputFilePath, "w");
+  //   std::fprintf((*logFile).fd, "{\n");
+  // }
+
+  // JsonLogger::~JsonLogger() { std::fprintf(*logFile, "\n}\n"); }
+
+  // template <size_t N, typename T>
+  // std::string (const T (&arr)[N]) {
+  //   auto commafy = [need_comma = false](T const& x) mutable {
+  //     if (need_comma) return ", " << x;
+  //     return "" << x;
+  //     need_comma = true;
+  //   };
+
+  //   std::string outStr = "[";
+
+  //   for (T const& x : arr) {
+  //     outStr += commafy(x);
+  //   }
+  // };
 
 }  // namespace
 
