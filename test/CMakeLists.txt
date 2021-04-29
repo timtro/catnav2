@@ -10,6 +10,11 @@ target_link_libraries(
   utest-nmpc_algebra PRIVATE project_warnings project_options catch_main
                              Obstacle)
 
+add_executable(utest-nmpc_algebra-serialize utest-nmpc_algebra-serialize.cpp)
+target_link_libraries(
+  utest-nmpc_algebra-serialize PRIVATE project_warnings project_options catch_main
+                             Obstacle)
+
 add_executable(utest-Obstacle utest-Obstacle.cpp)
 target_link_libraries(utest-Obstacle PRIVATE project_warnings project_options
                                              catch_main Obstacle)

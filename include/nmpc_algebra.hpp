@@ -1,14 +1,16 @@
 #pragma once
 
 #include <chrono>
+#include <climits>
 #include <cmath>
 #include <functional>
 #include <type_traits>
-#include <climits>
 
 #include "../include/list-fmap.hpp"
 #include "../include/nav2_Pose.hpp"
 #include "../lib/Obstacle.hpp"
+
+using namespace std::string_literals;
 
 enum class InfoFlag {
   OK,
@@ -30,7 +32,6 @@ struct WorldState {
   std::optional<nav2::Pose<Clock>> nav2pose;
   std::vector<ob::Obstacle> obstacles;
 };
-
 
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 struct NMPCState {
@@ -73,11 +74,55 @@ struct NMPCState {
   InfoFlag infoFlag = InfoFlag::OK;
 };
 
+namespace util {
 
-template <std::size_t N, typename Clock = std::chrono::steady_clock>
-std::string to_json(NMPCState<N, Clock> s) {
-  return "" + std::to_string(s.time);
-}
+  template <typename Clock = std::chrono::steady_clock>
+  static inline std::string to_string(const typename Clock::time_point& tp) {
+    return std::to_string(tp.time_since_epoch().count());
+  }
+
+  template <typename T, size_t N>
+  std::string array_to_json_array(std::array<T, N> xs) {
+    static_assert(N > 2);
+    std::string output = "[";
+    for (unsigned int i = 0; i <= N - 2; ++i)
+      output += std::to_string(xs[i]) + ",";
+    output += std::to_string(xs[N - 1]) + "]";
+    return output;
+  }
+
+  std::string ob_vec_to_json_array(std::vector<ob::Obstacle>& obs) {
+    std::string output = "[";
+    constexpr auto separator = ", ";
+    const auto* sep = "";
+    for (const auto& ob : obs) {
+      output += sep + ob::to_json(ob);
+      sep = separator;
+    }
+    return output + "]";
+  }
+
+  template <std::size_t N, typename Clock = std::chrono::steady_clock>
+  std::string to_json(NMPCState<N, Clock> s) {
+    return "{\n"s + "\"time\": " + util::to_string(s.time) + ",\n" + "\"R\": "
+           + std::to_string(s.R) + ",\n" + "\"Q\": " + std::to_string(s.Q)
+           + ",\n" + "\"Q₀\": " + std::to_string(s.Q0) + ",\n"
+           + "\"dt\": " + std::to_string(s.dt.count()) + ",\n"
+           + "\"x\": " + array_to_json_array(s.x) + ",\n"
+           + "\"y\": " + array_to_json_array(s.y) + ",\n"
+           + "\"th\": " + array_to_json_array(s.th) + ",\n"
+           + "\"Dx\": " + array_to_json_array(s.Dx) + ",\n"
+           + "\"Dy\": " + array_to_json_array(s.Dy) + ",\n"
+           + "\"Dth\": " + array_to_json_array(s.Dth) + ",\n"
+           + "\"v\": " + array_to_json_array(s.v) + ",\n"
+           + "\"xref\": " + array_to_json_array(s.xref) + ",\n"
+           + "\"yref\": " + array_to_json_array(s.yref) + ",\n"
+           + "\"ex\": " + array_to_json_array(s.ex) + ",\n"
+           + "\"ey\": " + array_to_json_array(s.ey) + ",\n"
+           + "\"obstacles\": " + ob_vec_to_json_array(s.obstacles) + "\n" + "}";
+  }
+
+}  // namespace util
 
 namespace dtl {
 

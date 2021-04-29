@@ -1,6 +1,7 @@
 #pragma once
 
 #include <variant>
+#include <string>
 
 #include "../include/XY.hpp"
 
@@ -23,6 +24,8 @@ namespace ob {
   using Obstacle = std::variant<ob::Null, ob::Point>;
 
   XY g_phi(XY, const ob::Obstacle);
+
+  std::string to_json(const Obstacle);
 
   constexpr auto g_phi_accuml(XY p) {
     return

@@ -1,13 +1,12 @@
 #include <chrono>
 #include <cmath>
+#include <fstream>
 #include <iomanip>
-#include <iostream>
 #include <queue>
 #include <rxcpp/rx.hpp>
 #include <rxcpp/subjects/rx-subject.hpp>
 #include <utility>
 
-#include "../include/CFileContainer.hpp"
 #include "../include/nmpc_algebra.hpp"
 #include "../lib/Nav2remote.hpp"
 
@@ -31,6 +30,27 @@ namespace {
    public:
     const rxcpp::observable<PState> worldStates =
         rxcpp::observable<>::interval(100ms).map([this](auto) {
+          obstacles.clear();
+          constexpr double omega = 1E-9;
+          obstacles = std::vector<ob::Obstacle>{
+              ob::Point{
+                  {5
+                       +  2 * std::sin(
+                           omega
+                           * steady_clock::now().time_since_epoch().count()),
+                   2 * std::cos(omega
+                            * steady_clock::now().time_since_epoch().count())},
+                  2,
+                  0.3333},
+              ob::Point{
+                  {5
+                       - 2 * std::sin(
+                           omega
+                           * steady_clock::now().time_since_epoch().count()),
+                   -2 * std::cos(omega
+                            * steady_clock::now().time_since_epoch().count())},
+                  2,
+                  0.3333}};
           return PState{std::nullopt, remoteNav2.estimatePosition(), obstacles};
         });
 
@@ -72,38 +92,37 @@ namespace {
     };
   };
 
-  // struct JsonLogger {
-  //   std::unique_ptr<CFileContainer> logFile;
+  struct JsonLogger {
+    std::ofstream logFile;
 
-  //   JsonLogger(const JsonLogger&) = delete;
-  //   JsonLogger(const JsonLogger&&) = delete;
-  //   JsonLogger& operator=(const JsonLogger&) = delete;
-  //   JsonLogger& operator=(const JsonLogger&&) = delete;
-  //   explicit JsonLogger(std::string outputFilePath);
-  //   ~JsonLogger();
-  // };
+    static constexpr auto separator = ",\n";
+    const char* sep = "";
 
-  // JsonLogger::JsonLogger(std::string outputFilePath) {
-  //   logFile = std::make_unique<CFileContainer>(outputFilePath, "w");
-  //   std::fprintf((*logFile).fd, "{\n");
-  // }
+    JsonLogger(const JsonLogger&) = delete;
+    JsonLogger(const JsonLogger&&) = delete;
+    JsonLogger& operator=(const JsonLogger&) = delete;
+    JsonLogger& operator=(const JsonLogger&&) = delete;
+    explicit JsonLogger(std::string outputFilePath);
+    ~JsonLogger();
 
-  // JsonLogger::~JsonLogger() { std::fprintf(*logFile, "\n}\n"); }
+    void log(std::string);
+  };
 
-  // template <size_t N, typename T>
-  // std::string (const T (&arr)[N]) {
-  //   auto commafy = [need_comma = false](T const& x) mutable {
-  //     if (need_comma) return ", " << x;
-  //     return "" << x;
-  //     need_comma = true;
-  //   };
+  JsonLogger::JsonLogger(const std::string outputFilePath) {
+    logFile.open(outputFilePath);
+    logFile << "[\n";
+  }
 
-  //   std::string outStr = "[";
+  JsonLogger::~JsonLogger() {
+    std::cout << "Closing json file" << std::endl;
+    logFile << "\n]\n";
+    logFile.close();
+  }
 
-  //   for (T const& x : arr) {
-  //     outStr += commafy(x);
-  //   }
-  // };
+  void JsonLogger::log(std::string s) {
+    logFile << sep << s;
+    sep = separator;
+  }
 
 }  // namespace
 
@@ -120,10 +139,12 @@ int main() {
     return c;
   }();
 
+  JsonLogger logger("testlog.json");
+
   const PState w0 = []() {
     PState w;
     w.target = {{10, 0}, 0.5};
-    w.obstacles = {ob::Point{{5, 0}, 2, 0.3333}};
+    w.obstacles = {ob::Point{{5, 0}, 2, 0.3333}, ob::Point{{3, -1}, 2, 0.3333}};
     w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, 0};
     return w;
   }();
@@ -159,10 +180,12 @@ int main() {
                       worldIface.targetSetpoint)
                     .observe_on(rxcpp::identity_current_thread())
                                                       //    𝑒
-                    .scan(c0, nmpc_algebra<N>)        //   ───> C
-                    .subscribe(
-                      [&worldIface](CState c) {       //      𝑢
-                        worldIface.controlled_step(c);//   C ───> ◼
+                    .scan(c0, nmpc_algebra<N>);       //   ───> C
+
+  sControls.subscribe(
+                      [&worldIface, &logger](CState c) {  //      𝑢
+                        worldIface.controlled_step(c);    //   C ───> ◼
+                        logger.log(util::to_json(c));
                       });
   // clang-format on
   // Think of subscribe as `for_each`, but for an asynchronous stream of
