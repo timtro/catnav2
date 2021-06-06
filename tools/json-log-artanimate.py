@@ -45,7 +45,7 @@ class OPoint:
         self.x, self.y, self.epsilon, self.pwr = x, y, epsilon, pwr
 
     def phi(self, x, y):
-        return 1/((self.x - x)**self.pwr + (self.y - y)**self.pwr + self.epsilon)
+        return 1/(np.sqrt((self.x - x)**2 + (self.y - y)**2)**self.pwr + self.epsilon)
 
 
 class ONull:
@@ -109,8 +109,8 @@ def main(jsonFileName, updateInterval):
     cmapstr = 'Greys'
     bg = plt.cm.get_cmap(cmapstr)(0.0)
 
-    fig = plt.figure(figsize=(16, 9), dpi=120, facecolor=bg)
-    gs = gridspec.GridSpec(1, 2, width_ratios=[1, 1])
+    fig = plt.figure(figsize=(3.5, 3.5), dpi=120, facecolor=bg)
+    gs = gridspec.GridSpec(1, 1, width_ratios=[1])
     ax1 = fig.add_subplot(gs[0], adjustable='box', aspect=1.0)
     ax1.set_xlim(xmin, xmax)
     ax1.set_ylim(ymin, ymax)
@@ -118,12 +118,15 @@ def main(jsonFileName, updateInterval):
     ax1meshX, ax1meshY = np.meshgrid(np.arange(xmin, xmax, 0.1),
                                      np.arange(ymin, ymax, 0.1))
 
-    ax2 = fig.add_subplot(
-        gs[1], adjustable='box', aspect=1.0, facecolor=bg)
-    plt.setp(ax2.get_xticklabels(), visible=False)
-    plt.setp(ax2.get_yticklabels(), visible=False)
-    ax2.set_xlim(-pathRadius, pathRadius)
-    ax2.set_ylim(-pathRadius, pathRadius)
+    ax1.set_xlabel("x [m]")
+    ax1.set_ylabel("y [m]")
+
+    # ax2 = fig.add_subplot(
+    #     gs[1], adjustable='box', aspect=1.0, facecolor=bg)
+    # plt.setp(ax2.get_xticklabels(), visible=False)
+    # plt.setp(ax2.get_yticklabels(), visible=False)
+    # ax2.set_xlim(-pathRadius, pathRadius)
+    # ax2.set_ylim(-pathRadius, pathRadius)
 
     plt.tight_layout(pad=1.08, h_pad=None, w_pad=None, rect=None)
 
@@ -163,22 +166,23 @@ def main(jsonFileName, updateInterval):
                 a, = ax1.plot(ob.x, ob.y, 'ro')
                 obstacleActors.append(a)
 
-        ax2ErrPath, = ax2.plot(
-            xTrackedRelative, yTrackedRelative, 'o-', color='grey', lw=2, ms=5)
-        ax2Path, = ax2.plot(xRelative, yRelative, 'ro-', lw=2, ms=5)
-        ax2robot, = ax2.plot(0, 0, marker=(3, 0,
-                                           30 + stepData['th'][0]*180/np.pi),
-                             markersize=20, linestyle='None', color='k')
+        # ax2ErrPath, = ax2.plot(
+        #     xTrackedRelative, yTrackedRelative, 'o-', color='grey', lw=2, ms=5)
+        # ax2Path, = ax2.plot(xRelative, yRelative, 'ro-', lw=2, ms=5)
+        # ax2robot, = ax2.plot(0, 0, marker=(3, 0,
+        #                                    30 + stepData['th'][0]*180/np.pi),
+        #                      markersize=20, linestyle='None', color='k')
 
         ims.append([path, errPath, hist, ax1robot]
                    + obstacleActors
                    + field.collections
-                   + [ax2Path, ax2ErrPath, ax2robot]
+                   # + [ax2Path, ax2ErrPath, ax2robot]
                    )
 
     ani = animation.ArtistAnimation(fig, ims, interval=updateInterval)
-    plt.show()
-    # ani.save('two_moving_obs.mp4',writer='ffmpeg')
+    # plt.show()
+    ani.save('anim.mp4',writer='ffmpeg')
+    # ani.save("tmp/anim.png", writer="imagemagick")
 
 
 parser = argparse.ArgumentParser(

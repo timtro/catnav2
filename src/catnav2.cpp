@@ -20,6 +20,34 @@ constexpr std::size_t N = 15;
 using CState = NMPCState<N, steady_clock>;
 using PState = WorldState<steady_clock>;
 
+
+std::vector<ob::Obstacle> two_circling_points(long tl) {
+  auto t = static_cast<double>(tl) + 1E6;
+  constexpr double omega = 1E-9;
+  constexpr double centreX = 5;
+  constexpr double centreY = 0;
+  constexpr double radius = 2;
+  return std::vector<ob::Obstacle>{
+      ob::Point{{centreX + radius * std::sin(omega * t),
+                 centreY + radius * std::cos(omega * t)},
+                2,
+                0.3333},
+      ob::Point{{centreX - 2 * std::sin(omega * t),
+                 centreY - 2 * std::cos(omega * t)},
+                2,
+                0.3333}};
+}
+
+std::pair<std::vector<ob::Obstacle>, std::optional<Target>> bob_and_weave(
+    double t) {
+  constexpr XY init = {0, 3};
+  constexpr XY final = {10, 0};
+  constexpr double v = 0.75;
+  const XY dir = normalise(final - init);
+  const auto pos = init + (v * t) * dir;
+  return {{ob::Point{pos, 3, 0.1}}, Target{pos + dir, 0.15}};
+}
+
 namespace {
 
   class WorldInterface {
@@ -31,27 +59,10 @@ namespace {
     const rxcpp::observable<PState> worldStates =
         rxcpp::observable<>::interval(100ms).map([this](auto) {
           obstacles.clear();
-          constexpr double omega = 1E-9;
-          obstacles = std::vector<ob::Obstacle>{
-              ob::Point{
-                  {5
-                       +  2 * std::sin(
-                           omega
-                           * steady_clock::now().time_since_epoch().count()),
-                   2 * std::cos(omega
-                            * steady_clock::now().time_since_epoch().count())},
-                  2,
-                  0.3333},
-              ob::Point{
-                  {5
-                       - 2 * std::sin(
-                           omega
-                           * steady_clock::now().time_since_epoch().count()),
-                   -2 * std::cos(omega
-                            * steady_clock::now().time_since_epoch().count())},
-                  2,
-                  0.3333}};
-          return PState{std::nullopt, remoteNav2.estimatePosition(), obstacles};
+          auto [obs, otgt] = bob_and_weave(
+              std::chrono::duration<double>(steady_clock::now() - timeAtStartup)
+                  .count());
+          return PState{otgt, remoteNav2.estimatePosition(), obs};
         });
 
     const rxcpp::observable<std::optional<Target>> targetSetpoint;
@@ -80,7 +91,6 @@ namespace {
         case InfoFlag::NoTarget:
         case InfoFlag::TargetReached:
           remoteNav2.execute(nav2::actions::Stop{});
-          std::this_thread::sleep_for(1s);
           break;
 
         case InfoFlag::Null:
@@ -105,7 +115,7 @@ namespace {
     explicit JsonLogger(std::string outputFilePath);
     ~JsonLogger();
 
-    void log(std::string);
+    void log(const std::string&);
   };
 
   JsonLogger::JsonLogger(const std::string outputFilePath) {
@@ -114,12 +124,11 @@ namespace {
   }
 
   JsonLogger::~JsonLogger() {
-    std::cout << "Closing json file" << std::endl;
     logFile << "\n]\n";
     logFile.close();
   }
 
-  void JsonLogger::log(std::string s) {
+  void JsonLogger::log(const std::string& s) {
     logFile << sep << s;
     sep = separator;
   }
@@ -130,7 +139,7 @@ int main() {
   const CState c0 = []() {
     CState c;
     c.infoFlag = InfoFlag::NoTarget;
-    for (auto& each : c.v) each = 1.25;
+    for (auto& each : c.v) each = 0.8;
     c.dt = 1.s / 5;
     for (auto& each : c.Dth) each = 0.5;
     c.Q0 = 1;
@@ -144,13 +153,12 @@ int main() {
   const PState w0 = []() {
     PState w;
     w.target = {{10, 0}, 0.5};
-    w.obstacles = {ob::Point{{5, 0}, 2, 0.3333}, ob::Point{{3, -1}, 2, 0.3333}};
+    w.obstacles = {};
     w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, 0};
     return w;
   }();
 
   WorldInterface worldIface(w0, "localhost");
-  auto thr = rxcpp::synchronize_event_loop();
 
   // A classical confiuration for a feedback controller is illustrated as:
   //                  err   u
@@ -172,12 +180,12 @@ int main() {
   const auto sControls =
                   worldIface                          //        plantState
                     .worldStates                      //         ◼ ─────⮧  𝑒
-                    .combine_latest(                  // target  ◼ ───> ⊗ ───> ⋯
-                      [](WorldState<> w, std::optional<Target> t) {
-                        w.target = t;
-                        return w;
-                      },
-                      worldIface.targetSetpoint)
+                    // .combine_latest(                  // target  ◼ ───> ⊗ ───> ⋯
+                    //   [](WorldState<> w, std::optional<Target> ) {
+                    //     // w.target = t;
+                    //     return w;
+                    //   },
+                    //   worldIface.targetSetpoint)
                     .observe_on(rxcpp::identity_current_thread())
                                                       //    𝑒
                     .scan(c0, nmpc_algebra<N>);       //   ───> C

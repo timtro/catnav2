@@ -20,7 +20,7 @@ namespace ob {
      *   d𝑟          ρ     2
      *             (𝑟  + ε)
      */
-    auto r = o.position - p;
+    const auto r = o.position - p;
     const double q = quadrance(r);
     // TODO: Maybe missing minus sign in numer:
     const double numer = o.pwr * std::pow(q, o.pwr / 2 - 1);

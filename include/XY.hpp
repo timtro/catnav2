@@ -29,6 +29,10 @@ inline constexpr XY operator-(const XY &a, const XY &b) {
   return XY{a.x - b.x, a.y - b.y};
 }
 
+inline constexpr XY operator*(const double &a, const XY &b) {
+  return XY{a * b.x, a * b.y};
+}
+
 inline double l2norm(const XY &p) { return std::hypot(p.x, p.y); }
 
 inline constexpr double quadrance(const XY &p) { return p.x * p.x + p.y * p.y; }

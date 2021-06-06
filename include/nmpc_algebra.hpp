@@ -70,6 +70,7 @@ struct NMPCState {
       Q = 0,     // Tracking error penalty
       Q0 = 0;    // Terminal error penalty
   // Collection of obstacles used to compute (DPhiX, DPhiY).
+  Target target = {{0., 0.}, 0.1};
   std::vector<ob::Obstacle> obstacles;
   InfoFlag infoFlag = InfoFlag::OK;
 };
@@ -82,7 +83,7 @@ namespace util {
   }
 
   template <typename T, size_t N>
-  std::string array_to_json_array(std::array<T, N> xs) {
+  std::string array_to_json_array(const std::array<T, N> xs) {
     static_assert(N > 2);
     std::string output = "[";
     for (unsigned int i = 0; i <= N - 2; ++i)
@@ -91,7 +92,7 @@ namespace util {
     return output;
   }
 
-  std::string ob_vec_to_json_array(std::vector<ob::Obstacle>& obs) {
+  std::string ob_vec_to_json_array(const std::vector<ob::Obstacle>& obs) {
     std::string output = "[";
     constexpr auto separator = ", ";
     const auto* sep = "";
@@ -102,10 +103,36 @@ namespace util {
     return output + "]";
   }
 
+  std::string to_string(const InfoFlag f) {
+    if (f == InfoFlag::OK)
+      return "OK";
+    else if (f == InfoFlag::TargetReached)
+      return "TargetReached";
+    else if (f == InfoFlag::NoTarget)
+      return "NoTarget";
+    else if (f == InfoFlag::MissingWorldData)
+      return "MissingWorldData";
+    else if (f == InfoFlag::STOP)
+      return "STOP";
+    else if (f == InfoFlag::Null)
+      return "Null";
+    else
+      return "ERROR: UNRECOGNIZED INFO FLAG";
+  }
+
+  inline std::string to_string(const Target t) {
+    return "([" + std::to_string(t.position.x) + ", "
+           + std::to_string(t.position.y) + "], " + std::to_string(t.tolerance)
+           + ")";
+  }
+
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   std::string to_json(NMPCState<N, Clock> s) {
-    return "{\n"s + "\"time\": " + util::to_string(s.time) + ",\n" + "\"R\": "
-           + std::to_string(s.R) + ",\n" + "\"Q\": " + std::to_string(s.Q)
+    return "{\n"s + "\"time\": " + util::to_string(s.time) + ",\n"
+           + "\"infoFlag\": \"" + to_string(s.infoFlag) + "\",\n"
+           + "\"target\": \"" + to_string(s.target) + "\",\n"
+           + "\"R\": " + std::to_string(s.R) + ",\n"
+           + "\"Q\": " + std::to_string(s.Q)
            + ",\n" + "\"Q₀\": " + std::to_string(s.Q0) + ",\n"
            + "\"dt\": " + std::to_string(s.dt.count()) + ",\n"
            + "\"x\": " + array_to_json_array(s.x) + ",\n"
@@ -252,6 +279,7 @@ namespace dtl {
     // TODO: This is from vme-nmpc, but has a bug. v is an N-1 size vector,
     // so v[0] doesn't mean the speed at (x[0],y[0]). I need to coordinate
     // with changes to telep-base to get the real Dx and Dy.
+    c.target = *w.target;
     c.obstacles = w.obstacles;
     return c;
   }
@@ -302,7 +330,7 @@ constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
   }
   if (l2norm(w.target->position - w.nav2pose->position) < w.target->tolerance) {
     c.infoFlag = InfoFlag::TargetReached;
-    return c;
+    return dtl::with_init_from_world(c, w);
   }
 
   c.infoFlag = InfoFlag::OK;
