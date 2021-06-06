@@ -20,84 +20,56 @@ constexpr std::size_t N = 15;
 using CState = NMPCState<N, steady_clock>;
 using PState = WorldState<steady_clock>;
 
-
-std::vector<ob::Obstacle> two_circling_points(long tl) {
-  auto t = static_cast<double>(tl) + 1E6;
-  constexpr double omega = 1E-9;
-  constexpr double centreX = 5;
-  constexpr double centreY = 0;
-  constexpr double radius = 2;
-  return std::vector<ob::Obstacle>{
-      ob::Point{{centreX + radius * std::sin(omega * t),
-                 centreY + radius * std::cos(omega * t)},
-                2,
-                0.3333},
-      ob::Point{{centreX - 2 * std::sin(omega * t),
-                 centreY - 2 * std::cos(omega * t)},
-                2,
-                0.3333}};
-}
-
-std::pair<std::vector<ob::Obstacle>, std::optional<Target>> bob_and_weave(
-    double t) {
-  constexpr XY init = {0, 3};
-  constexpr XY final = {10, 0};
-  constexpr double v = 0.75;
-  const XY dir = normalise(final - init);
-  const auto pos = init + (v * t) * dir;
-  return {{ob::Point{pos, 3, 0.1}}, Target{pos + dir, 0.15}};
-}
-
 namespace {
 
   class WorldInterface {
     const time_point<steady_clock> timeAtStartup = steady_clock::now();
-    nav2::Remote remoteNav2;
-    std::vector<ob::Obstacle> obstacles;
+    nav2::Remote plant;
+    nav2::Remote remoteObst;
 
    public:
     const rxcpp::observable<PState> worldStates =
         rxcpp::observable<>::interval(100ms).map([this](auto) {
-          obstacles.clear();
-          auto [obs, otgt] = bob_and_weave(
-              std::chrono::duration<double>(steady_clock::now() - timeAtStartup)
-                  .count());
-          return PState{otgt, remoteNav2.estimatePosition(), obs};
+          const auto obstPose = remoteObst.estimatePosition();
+          const std::optional<Target> tgtFromObst = {{obstPose->position, 0.1}};
+          return PState{tgtFromObst, plant.estimatePosition(), {ob::Null{}}};
         });
 
     const rxcpp::observable<std::optional<Target>> targetSetpoint;
 
-    WorldInterface(PState w0, const std::string& addr, int port = 5010)
-        : remoteNav2(addr.c_str(), port),
-          obstacles(w0.obstacles),
+    WorldInterface(PState w0, const std::string& addr,
+                   const std::string& addrObst, int port = 5010)
+        : plant(addr.c_str(), port),
+          remoteObst(addrObst.c_str(), 5010),
           targetSetpoint(
               rxcpp::observable<>::just<std::optional<Target>>(w0.target)) {
       auto [x0, y0] = w0.nav2pose->position;
-      remoteNav2.setPosition(x0, y0, w0.nav2pose->orientation);
+      plant.setPosition(x0, y0, w0.nav2pose->orientation);
+      remoteObst.setPosition(3, 0, 0);
     }
 
     void controlled_step(CState& c) {
       switch (c.infoFlag) {
         case InfoFlag::OK:
-          remoteNav2.execute(
+          plant.execute(
               nav2::actions::SetRelativeVelocity{0, c.v[0], c.Dth[0]});
           break;
 
         case InfoFlag::STOP:
-          remoteNav2.execute(nav2::actions::Stop{});
+          plant.execute(nav2::actions::Stop{});
           break;
 
         case InfoFlag::MissingWorldData:
         case InfoFlag::NoTarget:
         case InfoFlag::TargetReached:
-          remoteNav2.execute(nav2::actions::Stop{});
+          plant.execute(nav2::actions::Stop{});
           break;
 
         case InfoFlag::Null:
           break;
 
         default:
-          remoteNav2.execute(nav2::actions::Stop{});
+          plant.execute(nav2::actions::Stop{});
       }
     };
   };
@@ -153,12 +125,11 @@ int main() {
   const PState w0 = []() {
     PState w;
     w.target = {{10, 0}, 0.5};
-    w.obstacles = {};
     w.nav2pose = nav2::Pose<>{steady_clock::now(), {0, 0}, 0};
     return w;
   }();
 
-  WorldInterface worldIface(w0, "localhost");
+  WorldInterface worldIface(w0, "localhost", "192.168.1.33");
 
   // A classical confiuration for a feedback controller is illustrated as:
   //                  err   u
