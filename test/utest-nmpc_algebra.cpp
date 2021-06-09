@@ -10,6 +10,10 @@ template <typename T, std::size_t N>
 constexpr auto as_vector(T (&x)[N]) {
   return std::vector(x, x + N);
 }
+template <typename T, std::size_t N>
+constexpr auto as_vector(std::array<T, N> x) {
+  return std::vector(x.data(), x.data() + N);
+}
 
 template <typename T, std::size_t N>
 constexpr void set_array(T (&x)[N], std::array<T, N>&& list) {
@@ -112,8 +116,8 @@ TEST_CASE(
       for (auto& each : c.v) each = 1;
       for (auto& each : c.Dth) each = 0;
       for (auto& each : c.th) each = 0;
-      set_array(c.xref, {1, 2, 3, 4});
-      set_array(c.yref, {0, 0, 0, 0});
+      c.xref = {1, 2, 3, 4};
+      c.yref = {0, 0, 0, 0};
       return c;
     }();
 
@@ -139,8 +143,8 @@ TEST_CASE(
       for (auto& each : c.v) each = 1;
       for (auto& each : c.Dth) each = M_PI_2;
       for (auto& each : c.th) each = 0;
-      set_array(c.xref, {1, 1, 0, 0});
-      set_array(c.yref, {0, 1, 1, 0});
+      c.xref = {1, 1, 0, 0};
+      c.yref = {0, 1, 1, 0};
       return c;
     }();
 
@@ -174,10 +178,10 @@ TEST_CASE(
       for (auto& each : c.v) each = 1;
       for (auto& each : c.Dth) each = 0;
       for (auto& each : c.th) each = M_PI_4;
-      set_array(c.xref,
-                {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
-      set_array(c.yref,
-                {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2});
+      c.xref =
+        {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2};
+      c.yref =
+        {-M_SQRT1_2, -2 * M_SQRT1_2, -3 * M_SQRT1_2, -4 * M_SQRT1_2};
       return c;
     }();
 
@@ -218,8 +222,8 @@ TEST_CASE(
     //
     // We'll check this later.
     //
-    set_array(c.v, {M_SQRT2, 1, 1, 1});
-    set_array(c.Dth, {0, -3 * M_PI_4, 0, 0});
+    c.v = {M_SQRT2, 1, 1, 1};
+    c.Dth = {0, -3 * M_PI_4, 0, 0};
     //                ↑
     //                dtl::forecast doesn't compute potential at the fixed
     //                “current” position, since it doesn't factor into the
@@ -260,10 +264,10 @@ TEST_CASE(
     c.th[0] = M_PI_4;
     c.Dx[0] = 1;
     c.Dy[0] = 1;
-    set_array(c.xref, {1, 2, 3, 4});
-    set_array(c.yref, {1, 2, 3, 4});
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-    set_array(c.Dth, {0, 0, 0, 0});
+    c.xref = {1, 2, 3, 4};
+    c.yref = {1, 2, 3, 4};
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
+    c.Dth = {0, 0, 0, 0};
     c.Q0 = 1;
     c.Q = 1;
     c.R = 1;
@@ -299,10 +303,10 @@ TEST_CASE(
     c.th[0] = M_PI_4;
     c.Dx[0] = 1;
     c.Dy[0] = 1;
-    set_array(c.xref, {1, 2, 3, 4});
-    set_array(c.yref, {1, 2, 3, 4});
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-    set_array(c.Dth, {0, 0, 0, 0});
+    c.xref = {1, 2, 3, 4};
+    c.yref = {1, 2, 3, 4};
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
+    c.Dth = {0, 0, 0, 0};
     c.Q0 = 1;
     c.Q = 1;
     c.R = 1;
@@ -332,10 +336,10 @@ TEST_CASE(
     c.th[0] = M_PI_4;
     c.Dx[0] = 1;
     c.Dy[0] = 1;
-    set_array(c.xref, {1, 2, 3, 4});
-    set_array(c.yref, {1, 2, 3, 4});
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-    set_array(c.Dth, {M_PI_4, M_PI_4, M_PI_4, M_PI_4});
+    c.xref = {1, 2, 3, 4};
+    c.yref = {1, 2, 3, 4};
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
+    c.Dth = {M_PI_4, M_PI_4, M_PI_4, M_PI_4};
     c.Q0 = 0;
     c.Q = 1;
     c.R = 0.5;
@@ -358,7 +362,7 @@ TEST_CASE(
     "[dtl][plan_reference]") {
   const auto c = [] {
     NMPCState<5> c;
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
     c.dt = 1s;
     return c;
   }();
@@ -382,7 +386,7 @@ TEST_CASE(
     "[dtl][plan_reference]") {
   const auto c = [] {
     NMPCState<5> c;
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
     c.dt = 1s;
     return c;
   }();
@@ -406,7 +410,7 @@ TEST_CASE(
     "[dtl][plan_reference]") {
   const auto c = [] {
     NMPCState<5> c;
-    set_array(c.v, {1, 1, 1, 1});
+    c.v = {1, 1, 1, 1};
     c.dt = 1s;
     return c;
   }();
@@ -430,7 +434,7 @@ TEST_CASE(
     "[dtl][plan_reference]") {
   const auto c = [] {
     NMPCState<5> c;
-    set_array(c.v, {1, 1, 1, 1});
+    c.v = {1, 1, 1, 1};
     c.dt = 1s;
     return c;
   }();
@@ -455,7 +459,7 @@ TEST_CASE(
   auto c = [] {
     NMPCState<5> c;
     c.dt = 1s;
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
     c.Q0 = 0;
     c.Q = 1;
     c.R = 0.5;
@@ -486,8 +490,8 @@ TEST_CASE(
   auto c = [] {
     NMPCState<5> c;
     c.dt = 1s;
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-    set_array(c.Dth, {M_PI_4, M_PI_4, M_PI_4, M_PI_4});
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
+    c.Dth = {M_PI_4, M_PI_4, M_PI_4, M_PI_4};
     c.Q0 = 1;
     c.Q = 1;
     c.R = 0.5;
@@ -524,15 +528,15 @@ TEST_CASE(
   auto c1 = [] {
     NMPCState<5> c;
     c.dt = 1s;
-    set_array(c.v, {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2});
-    set_array(c.Dth, {0.1, 0.1, 0.1, 0.1});
+    c.v = {M_SQRT2, M_SQRT2, M_SQRT2, M_SQRT2};
+    c.Dth = {0.1, 0.1, 0.1, 0.1};
     c.Q0 = 1;
     c.Q = 1;
     c.R = 0.5;
     return c;
   }();
   auto c2 = [c = c1]() mutable {
-    set_array(c.Dth, {M_PI_4, M_PI_4, M_PI_4, M_PI_4});
+    c.Dth = {M_PI_4, M_PI_4, M_PI_4, M_PI_4};
     return c;
   }();
   auto w = [] {

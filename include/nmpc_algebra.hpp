@@ -4,6 +4,7 @@
 #include <cmath>
 #include <functional>
 #include <type_traits>
+#include <climits>
 
 #include "../include/list-fmap.hpp"
 #include "../include/nav2_Pose.hpp"
@@ -30,36 +31,37 @@ struct WorldState {
   std::vector<ob::Obstacle> obstacles;
 };
 
+
 template <std::size_t N, typename Clock = std::chrono::steady_clock>
 struct NMPCState {
   std::chrono::time_point<Clock> time;
   std::chrono::duration<double> dt = std::chrono::duration<double>(1. / 3);
   // State Vector:
-  double x[N] = {{0}};
-  double y[N] = {{0}};
-  double th[N] = {{0}};
-  double Dx[N] = {{0}};
-  double Dy[N] = {{0}};
-  double Dth[N - 1] = {{0}};
+  std::array<double, N> x = {{0}};
+  std::array<double, N> y = {{0}};
+  std::array<double, N> th = {{0}};
+  std::array<double, N> Dx = {{0}};
+  std::array<double, N> Dy = {{0}};
+  std::array<double, N - 1> Dth = {{0}};
   // Nav2 gives (𝑥, 𝑦) and robot orientation θ. For line following,
   // we want (v, θ), and we control ω = D θ. So we need 𝑣:
-  double v[N - 1] = {{0}};
+  std::array<double, N - 1> v = {{0}};
   // Tracking reference and resulting error (𝑥,𝑦) - (𝑥_ref, 𝑦_ref):
-  double xref[N - 1] = {{0}};
-  double yref[N - 1] = {{0}};
-  double ex[N - 1] = {{0}};
-  double ey[N - 1] = {{0}};
+  std::array<double, N - 1> xref = {{0}};
+  std::array<double, N - 1> yref = {{0}};
+  std::array<double, N - 1> ex = {{0}};
+  std::array<double, N - 1> ey = {{0}};
   // Obstacle potential gradient for all but starting point of the trajectory:
-  double DPhiX[N - 1] = {{0}};
-  double DPhiY[N - 1] = {{0}};
+  std::array<double, N - 1> DPhiX = {{0}};
+  std::array<double, N - 1> DPhiY = {{0}};
   // Lagrange Multipliers:
-  double px[N - 1] = {{0}};
-  double py[N - 1] = {{0}};
-  double pDx[N - 1] = {{0}};
-  double pDy[N - 1] = {{0}};
-  double pth[N - 1] = {{0}};
+  std::array<double, N - 1> px = {{0}};
+  std::array<double, N - 1> py = {{0}};
+  std::array<double, N - 1> pDx = {{0}};
+  std::array<double, N - 1> pDy = {{0}};
+  std::array<double, N - 1> pth = {{0}};
   // Optimisation gradients:
-  double grad[N - 1] = {{0}};
+  std::array<double, N - 1> grad = {{0}};
   double curGradNorm = 0;
   double prvGradNorm = 0;
   // Coefficients
@@ -121,6 +123,7 @@ namespace dtl {
   template <std::size_t N, typename Clock = std::chrono::steady_clock>
   constexpr NMPCState<N, Clock> lagrange_gradient(
       NMPCState<N, Clock> c) noexcept {
+    static_assert(N >= 3, "Gradient calculation requires N >= 3.");
     c.prvGradNorm = c.curGradNorm;
     c.px[N - 2] = c.Q0 * c.ex[N - 2];
     c.py[N - 2] = c.Q0 * c.ey[N - 2];
@@ -132,7 +135,7 @@ namespace dtl {
     // Get the gradient ∂ℋ/∂uₖ, for each step, k in the horizon, loop
     // through each k in N. This involves computing the obstacle potential
     // and Lagrange multiplierc.
-    for (int k = N - 3; k >= 0; --k) {
+    for (unsigned int k = N - 3; k != UINT_MAX; k--) {
       c.px[k] = c.Q * c.ex[k] + c.DPhiX[k] + c.px[k + 1];
       c.pDx[k] = c.px[k + 1] * c.dt.count();
       c.py[k] = c.Q * c.ey[k] + c.DPhiY[k] + c.py[k + 1];
