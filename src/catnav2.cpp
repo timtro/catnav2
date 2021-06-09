@@ -24,15 +24,19 @@ namespace {
 
   class WorldInterface {
     const time_point<steady_clock> timeAtStartup = steady_clock::now();
-    nav2::Remote plant;
-    nav2::Remote remoteObst;
 
    public:
+    nav2::Remote plant;
+    nav2::Remote remoteObst;
     const rxcpp::observable<PState> worldStates =
         rxcpp::observable<>::interval(100ms).map([this](auto) {
           const auto obstPose = remoteObst.estimatePosition();
-          const std::optional<Target> tgtFromObst = {{obstPose->position, 0.1}};
-          return PState{tgtFromObst, plant.estimatePosition(), {ob::Null{}}};
+          const auto leadAhead = XY{std::cos(obstPose->orientation),
+            std::sin(obstPose->orientation)};
+          const std::optional<Target> tgtFromObst = {{obstPose->position + leadAhead, 0.1}};
+          return PState{tgtFromObst,
+                        plant.estimatePosition(),
+                        {ob::Point{obstPose->position, 3, 0.1}}};
         });
 
     const rxcpp::observable<std::optional<Target>> targetSetpoint;
@@ -45,7 +49,6 @@ namespace {
               rxcpp::observable<>::just<std::optional<Target>>(w0.target)) {
       auto [x0, y0] = w0.nav2pose->position;
       plant.setPosition(x0, y0, w0.nav2pose->orientation);
-      remoteObst.setPosition(3, 0, 0);
     }
 
     void controlled_step(CState& c) {
@@ -129,7 +132,7 @@ int main() {
     return w;
   }();
 
-  WorldInterface worldIface(w0, "localhost", "192.168.1.33");
+  WorldInterface worldIface(w0, "localhost", "positron.local");
 
   // A classical confiuration for a feedback controller is illustrated as:
   //                  err   u

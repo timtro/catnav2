@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.animation as animation
 import json
+import re
 
 
 class OPoint:
@@ -95,6 +96,10 @@ def equalize_axes(xmin, xmax, ymin, ymax):
         span = (ymax - ymin) / 2
         return mid - span, mid + span, ymin, ymax
 
+def target_log_to_coord(s):
+    x,y,tol = re.findall('-?\d*\.?\d+', s)
+    return float(x), float(y)
+
 
 def main(jsonFileName, updateInterval):
     with open(jsonFileName, 'r') as jsonInputFile:
@@ -109,7 +114,7 @@ def main(jsonFileName, updateInterval):
     cmapstr = 'Greys'
     bg = plt.cm.get_cmap(cmapstr)(0.0)
 
-    fig = plt.figure(figsize=(3.5, 3.5), dpi=120, facecolor=bg)
+    fig = plt.figure(figsize=(10, 10), dpi=96, facecolor=bg)
     gs = gridspec.GridSpec(1, 1, width_ratios=[1])
     ax1 = fig.add_subplot(gs[0], adjustable='box', aspect=1.0)
     ax1.set_xlim(xmin, xmax)
@@ -147,6 +152,7 @@ def main(jsonFileName, updateInterval):
         xTrackedRelative = xTracked - x[0]
         yTrackedRelative = yTracked - y[0]
 
+
         obstacles = list(map(json_to_obstacle, stepData['obstacles']))
         Phi = np.zeros_like(ax1meshX)
         for each in obstacles:
@@ -159,6 +165,9 @@ def main(jsonFileName, updateInterval):
         ax1robot, = ax1.plot(x[0], y[0], marker=(3, 0,
                                                  30 + stepData['th'][0] * 180 / np.pi),
                              markersize=20, linestyle='None', color='k')
+        tgtX, tgtY = target_log_to_coord(stepData['target'])
+        print(target_log_to_coord(stepData['target']))
+        ax1target, = ax1.plot(tgtX, tgtY, 'rx', ms=15)
 
         obstacleActors = []
         for ob in obstacles:
@@ -173,15 +182,15 @@ def main(jsonFileName, updateInterval):
         #                                    30 + stepData['th'][0]*180/np.pi),
         #                      markersize=20, linestyle='None', color='k')
 
-        ims.append([path, errPath, hist, ax1robot]
+        ims.append([path, errPath, hist, ax1robot, ax1target]
                    + obstacleActors
                    + field.collections
                    # + [ax2Path, ax2ErrPath, ax2robot]
                    )
 
     ani = animation.ArtistAnimation(fig, ims, interval=updateInterval)
-    # plt.show()
-    ani.save('anim.mp4',writer='ffmpeg')
+    plt.show()
+    # ani.save('anim.mp4',writer='ffmpeg')
     # ani.save("tmp/anim.png", writer="imagemagick")
 
 

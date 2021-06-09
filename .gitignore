@@ -4,6 +4,7 @@ compile_commands.json
 tools/modules/__pycache__
 # Prerequisites
 *.d
+results/*.mp4
 
 # Compiled Object files
 *.slo

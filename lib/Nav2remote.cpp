@@ -40,7 +40,7 @@ nav2::Remote::Remote(const char* host, int port)
   for (struct addrinfo* rp = ai;; rp = rp->ai_next) {
     if (rp == NULL) {
       freeaddrinfo(ai);
-      throw std::runtime_error("Can't connect to robot");
+      throw std::runtime_error(std::string("Can't connect to nav2 device at \"") + host + "\"");
     }
 
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
