@@ -7,8 +7,9 @@
 #include <rxcpp/subjects/rx-subject.hpp>
 #include <utility>
 
-#include "../lib/Nav2remote.hpp"
 #include "../include/nmpc_algebra.hpp"
+#include "../lib/JsonNMPCLogger.hpp"
+#include "../lib/Nav2remote.hpp"
 
 using namespace std::string_literals;
 using namespace std::chrono_literals;
@@ -101,6 +102,8 @@ int main() {
 
   WorldInterface worldIface("localhost", w0);
 
+  JsonLogger logger("testlog.json");
+
   // A classical confiuration for a feedback controller is illustrated as:
   //                  err   u
   //   setPoint ──➤ ⊕ ──➤ C ──➤ P ──┬──➤ plantState
@@ -132,7 +135,10 @@ int main() {
 
   // This completes the loop:      u
   sControls.subscribe(  //      C ───> ◼
-      [&worldIface](CState c) { worldIface.controlled_step(c); });
+      [&worldIface, &logger](CState c) {
+        worldIface.controlled_step(c);
+        logger.log(to_json(c));
+      });
 
   worldIface.targetSetpoint.get_subscriber().on_next(Target{{10, 0}, 0.5});
   worldIface.push_next_worldState();

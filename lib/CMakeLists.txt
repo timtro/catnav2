@@ -11,3 +11,10 @@ target_sources(
   PRIVATE Obstacle.cpp
   INTERFACE Obstacle.hpp)
 target_link_libraries(Obstacle PRIVATE project_options project_warnings)
+
+add_library(JsonNMPCLogger STATIC)
+target_sources(
+  JsonNMPCLogger
+  PRIVATE JsonNMPCLogger.cpp
+  INTERFACE JsonNMPCLogger.hpp)
+target_link_libraries(JsonNMPCLogger PRIVATE project_options project_warnings)

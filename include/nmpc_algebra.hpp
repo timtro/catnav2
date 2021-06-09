@@ -69,6 +69,7 @@ struct NMPCState {
       Q = 0,     // Tracking error penalty
       Q0 = 0;    // Terminal error penalty
   // Collection of obstacles used to compute (DPhiX, DPhiY).
+  Target target = {{0., 0.}, 0.1};
   std::vector<ob::Obstacle> obstacles;
   InfoFlag infoFlag = InfoFlag::OK;
 };

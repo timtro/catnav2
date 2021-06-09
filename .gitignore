@@ -1,4 +1,7 @@
 build/
+tools/tmp
+tools/modules/__pycache__
+
 compile_commands.json
 # Prerequisites
 *.d
