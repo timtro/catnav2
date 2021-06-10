@@ -145,10 +145,6 @@ int main() {
   // The better way to do this is to push world states by mapping over
   // the timer: worldStates = timer.map([](auto){... return PState{...}})
   // but this may work better for ROS integration.
-  worldIface.timer
-      .map([&worldIface](auto t) {
-        worldIface.push_next_worldState();
-        return t;
-      })
-      .subscribe([](long tp) { std::cout << tp << std::endl; });
+  worldIface.timer.subscribe(
+      [&worldIface](long) { worldIface.push_next_worldState(); });
 }
