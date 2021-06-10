@@ -29,6 +29,7 @@ namespace {
     nav2::Remote remoteNav2;
 
    public:
+    const rxcpp::observable<long> timer = rxcpp::observable<>::interval(100ms);
     const rxcpp::subjects::subject<PState> worldStates;
     const rxcpp::subjects::subject<std::optional<Target>> targetSetpoint;
 
@@ -64,7 +65,6 @@ namespace {
         case InfoFlag::NoTarget:
         case InfoFlag::TargetReached:
           remoteNav2.execute(nav2::actions::Stop{});
-          std::this_thread::sleep_for(1s);
           break;
 
         case InfoFlag::Null:
@@ -73,7 +73,6 @@ namespace {
         default:
           remoteNav2.execute(nav2::actions::Stop{});
       }
-      push_next_worldState();
     };
   };
 
@@ -140,6 +139,16 @@ int main() {
         logger.log(to_json(c));
       });
 
+  // This can be moved into the timer loop if it needs to be updated.
   worldIface.targetSetpoint.get_subscriber().on_next(Target{{10, 0}, 0.5});
-  worldIface.push_next_worldState();
+
+  // The better way to do this is to push world states by mapping over
+  // the timer: worldStates = timer.map([](auto){... return PState{...}})
+  // but this may work better for ROS integration.
+  worldIface.timer
+      .map([&worldIface](auto t) {
+        worldIface.push_next_worldState();
+        return t;
+      })
+      .subscribe([](long tp) { std::cout << tp << std::endl; });
 }

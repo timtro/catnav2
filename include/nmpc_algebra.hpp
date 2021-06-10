@@ -202,6 +202,7 @@ namespace dtl {
     // TODO: This is from vme-nmpc, but has a bug. v is an N-1 size vector,
     // so v[0] doesn't mean the speed at (x[0],y[0]). I need to coordinate
     // with changes to telep-base to get the real Dx and Dy.
+    c.target = *(w.target); // TODO: handle the optional properly.
     c.obstacles = w.obstacles;
     return c;
   }
@@ -252,7 +253,7 @@ constexpr NMPCState<N, Clock> nmpc_algebra(NMPCState<N, Clock> c,
   }
   if (l2norm(w.target->position - w.nav2pose->position) < w.target->tolerance) {
     c.infoFlag = InfoFlag::TargetReached;
-    return c;
+    return dtl::with_init_from_world(c, w);
   }
 
   c.infoFlag = InfoFlag::OK;
