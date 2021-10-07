@@ -137,9 +137,9 @@ namespace dtl {
     // through each k in N. This involves computing the obstacle potential
     // and Lagrange multiplierc.
     for (unsigned int k = N - 3; k != UINT_MAX; k--) {
-      c.px[k] = c.Q * c.ex[k] + c.DPhiX[k] + c.px[k + 1];
+      c.px[k] = c.px[k + 1] + c.Q * c.ex[k] - c.Dphi_x[k];
       c.pDx[k] = c.px[k + 1] * c.dt.count();
-      c.py[k] = c.Q * c.ey[k] + c.DPhiY[k] + c.py[k + 1];
+      c.py[k] = c.py[k + 1] + c.Q * c.ey[k] - c.Dphi_y[k];
       c.pDy[k] = c.py[k + 1] * c.dt.count();
       c.pth[k] = c.pth[k + 1] + c.pDy[k + 1] * c.v[k] * std::cos(c.th[k])
                  - c.pDx[k + 1] * c.v[k] * std::sin(c.th[k]);

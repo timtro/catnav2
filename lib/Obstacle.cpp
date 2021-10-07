@@ -20,8 +20,8 @@ namespace ob {
      */
     auto r = o.position - p;
     const double q = quadrance(r);
-    // TODO: Maybe missing minus sign in numer:
-    const double numer = o.pwr * std::pow(q, o.pwr / 2 - 1);
+
+    const double numer =  - o.pwr * std::pow(q, o.pwr / 2 - 1);
     const double denom = (std::pow(q, o.pwr / 2) + o.epsilon)
                          * (std::pow(q, o.pwr / 2) + o.epsilon);
 
