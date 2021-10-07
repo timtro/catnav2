@@ -36,8 +36,8 @@ TEST_CASE("Check for zero-initialisation", "[NMPCState]") {
   REQUIRE(as_vector(c.yref) == std::vector<double>{0, 0, 0, 0});
   REQUIRE(as_vector(c.ex) == std::vector<double>{0, 0, 0, 0});
   REQUIRE(as_vector(c.ey) == std::vector<double>{0, 0, 0, 0});
-  REQUIRE(as_vector(c.DPhiX) == std::vector<double>{0, 0, 0, 0});
-  REQUIRE(as_vector(c.DPhiY) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.Dphi_x) == std::vector<double>{0, 0, 0, 0});
+  REQUIRE(as_vector(c.Dphi_y) == std::vector<double>{0, 0, 0, 0});
   REQUIRE(as_vector(c.px) == std::vector<double>{0, 0, 0, 0});
   REQUIRE(as_vector(c.py) == std::vector<double>{0, 0, 0, 0});
   REQUIRE(as_vector(c.pDx) == std::vector<double>{0, 0, 0, 0});
@@ -245,10 +245,10 @@ TEST_CASE(
   CHECK_THAT(as_vector(result.th),
              Catch::Approx<double>({M_PI_4, M_PI_4, -M_PI_2, -M_PI_2, -M_PI_2})
                  .margin(1e-25));
-  REQUIRE_THAT(as_vector(result.DPhiX),
-               Catch::Approx<double>({0, -4. / 9, -1, -4. / 9}).margin(1e-25));
-  REQUIRE_THAT(as_vector(result.DPhiY),
-               Catch::Approx<double>({0, -4. / 9, 0, 4. / 9}).margin(1e-25));
+  REQUIRE_THAT(as_vector(result.Dphi_x),
+               Catch::Approx<double>({0, 4. / 9, 1, 4. / 9}).margin(1e-25));
+  REQUIRE_THAT(as_vector(result.Dphi_y),
+               Catch::Approx<double>({0, 4. / 9, 0, -4. / 9}).margin(1e-25));
 }
 
 TEST_CASE(
@@ -514,8 +514,8 @@ TEST_CASE(
              Catch::Approx<double>({0, 0, 0, 0}).margin(0.01));
 
   CHECK(as_vector(result.Dth) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.DPhiX) != std::vector<double>{0, 0, 0, 0});
-  CHECK(as_vector(result.DPhiY) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.Dphi_x) != std::vector<double>{0, 0, 0, 0});
+  CHECK(as_vector(result.Dphi_y) != std::vector<double>{0, 0, 0, 0});
   CHECK(as_vector(result.ex) != std::vector<double>{0, 0, 0, 0});
   CHECK(as_vector(result.ex) != std::vector<double>{0, 0, 0, 0});
 }

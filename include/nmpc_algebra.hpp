@@ -52,8 +52,8 @@ struct NMPCState {
   std::array<double, N - 1> ex = {{0}};
   std::array<double, N - 1> ey = {{0}};
   // Obstacle potential gradient for all but starting point of the trajectory:
-  std::array<double, N - 1> DPhiX = {{0}};
-  std::array<double, N - 1> DPhiY = {{0}};
+  std::array<double, N - 1> Dphi_x = {{0}};
+  std::array<double, N - 1> Dphi_y = {{0}};
   // Lagrange Multipliers:
   std::array<double, N - 1> px = {{0}};
   std::array<double, N - 1> py = {{0}};
@@ -111,7 +111,7 @@ namespace dtl {
       c.ex[k - 1] = c.x[k] - c.xref[k - 1];
       c.ey[k - 1] = c.y[k] - c.yref[k - 1];
 
-      std::tie(c.DPhiX[k - 1], c.DPhiY[k - 1]) =
+      std::tie(c.Dphi_x[k - 1], c.Dphi_y[k - 1]) =
           foldl(ob::g_phi_accuml({c.x[k], c.y[k]}), XY{0, 0}, c.obstacles);
     }
     return c;

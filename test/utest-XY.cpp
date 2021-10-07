@@ -1,8 +1,7 @@
+#include <catch2/catch.hpp>
 #include <cmath>
 #include <iostream>
 #include <vector>
-
-#include <catch2/catch.hpp>
 
 #include "../include/XY.hpp"
 
@@ -60,7 +59,8 @@ TEST_CASE(
   REQUIRE_THAT(as_vector(normalise({0.1, 0.1})),
                Catch::Approx<double>({M_SQRT1_2, M_SQRT1_2}));
 
-  REQUIRE(normalise({2, 2}) == normalise({0.1, 0.1}));
+  REQUIRE_THAT(as_vector(normalise({2, 2})),
+               Catch::Approx<double>(as_vector(normalise({0.1, 0.1}))));
 
   REQUIRE_THAT(as_vector(normalise({-5, 0})), Catch::Approx<double>({-1, 0}));
 
